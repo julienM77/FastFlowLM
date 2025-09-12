@@ -273,10 +273,26 @@ Type `/think` to toggle Think Mode on or off interactively in the CLI.
 /set
 ```
 
-> Customize decoding parameters like `top_k`, `top_p`, `temperature`, `context length (max)`, `generate_limit`, etc.
+> Customize decoding parameters like `top_k`, `top_p`, `temperature`, `context length (max)`, `generate limit`, etc.
 
 > ⚠️ **Note:** Providing invalid or extreme hyperparameter values may cause inference errors.
-> `generate_limit` sets an upper limit on the number of tokens that can be generated for each response.
+> `generate limit` sets an upper limit on the number of tokens that can be generated for each response. Example:
+
+```text
+/set gen-lim 128
+```
+
+---
+
+### 🎛️ Set Context Length at Launch
+
+In PowerShell, run:
+
+```bash
+flm run llama3.2:1b --ctx-len 8192
+```
+
+Internally, FLM enforces a minimum context length of 512. If you specify a smaller value, it will automatically be adjusted up to 512.
 
 ---
 

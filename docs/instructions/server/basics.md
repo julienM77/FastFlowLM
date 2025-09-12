@@ -35,7 +35,6 @@ It loads the model into memory and exposes it to apps through an API (usually th
 
 - **Ollama**
 - **llama-cpp-server**
-- **Docker-based model runners**
 
 ### ✅ Why Use a Local LLM Server?
 

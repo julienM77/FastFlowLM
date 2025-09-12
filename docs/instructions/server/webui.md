@@ -52,8 +52,12 @@ services:
     volumes:
       - open-webui-data:/app/backend/data
     environment:
-      - OPENAI_API_BASE_URL=http://host.docker.internal:11434
-      - WEBUI_AUTH=false 
+      # Point WebUI to FLM's OpenAI-compatible server
+      - OPENAI_API_BASE_URL=http://host.docker.internal:11434/v1
+      - OPENAI_API_KEY=dummy-key
+
+      # WebUI settings
+      - WEBUI_AUTH=false
       - WEBUI_SECRET_KEY=dummysecretkey
       - ENABLE_TITLE_GENERATION=false
       - ENABLE_FOLLOW_UP_GENERATION=false
@@ -66,11 +70,7 @@ services:
 
 volumes:
   open-webui-data:
-
 ```
-
-> `OPENAI_API_BASE_URL=http://host.docker.internal:11434` connects Open WebUI to local FastFlowLM  
-> `WEBUI_AUTH=false` disables login (optional)
 
 ---
 
@@ -138,7 +138,6 @@ This removes the container and persistent volume data.
 
 - Want login? Set `WEBUI_AUTH=true`
 - You must keep FastFlowLM server running
-- `http://host.docker.internal:11434` bridges from Docker container to your native Windows host FastFlowLM API
 - For persistent chat history, the volume `openwebui-data` stores user data
 
 ---
