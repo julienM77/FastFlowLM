@@ -6,7 +6,11 @@ parent: Instructions
 
 # ⚡ CLI Mode
 
-FastFlowLM offers a terminal-based interactive experience, similar to Ollama, but fully offline and accelerated excusively on AMD NPUs.
+FLM CLI mode offers a terminal-based interactive experience, similar to Ollama, but fully offline and accelerated exclusively on AMD NPUs. Here are detailed descriptions of commands and setup for CLI mode usage. It includes:
+
+- **[🔧 Pre-Run PowerShell Commands](#-pre-run-powershell-commands)**
+- **[💻 Commands Inside CLI Mode](#-commands-inside-cli-mode)**
+- **[🗂️ Others](#️-others)**
 
 ---
 
@@ -70,80 +74,7 @@ flm remove llama3.2:3b
 
 ---
 
-### 📂 Load a Local Text File in CLI Mode
-
-Use any file that can be opened in Notepad (like `.txt`, `.json`, `.csv`, etc.).
-
-Format (in CLI mode):
-
-```powershell
-/input "<file_path>" prompt
-```
-
-Example:
-
-```powershell
-/input "C:\Users\Public\Desktop\alice_in_wonderland.txt" Summarize it into 200 words
-```
-
-> Notes:
-
-* Use quotes **only around the file path**
-* **No quotes** around the prompt
-* File must be plain text (readable in Notepad)
-
-👉 [Download a sample prompt (around 40k tokens)](https://github.com/FastFlowLM/FastFlowLM/blob/main/assets/alice_in_wonderland.txt)  
-
-> ⚠️ **Caution:** a model’s supported context length is limited by available DRAM capacity. For example, with **32 GB** of DRAM, **LLaMA 3.1:8B** cannot run beyond a **32K** context length. For the full **128K** context, we recommend larger memory system.
-
-If DRAM is heavily used by other programs while running **FastFlowLM**, you may encounter errors due to insufficient memory, such as:
-
-```error
-[XRT] ERROR: Failed to submit the command to the hw queue (0xc01e0200):
-Even after the video memory manager split the DMA buffer, the video memory manager
-could not page-in all of the required allocations into video memory at the same time.
-The device is unable to continue.
-```
-
-> 🤔 Interested in checking the DRAM usage?
-
-**Method 1 – Task Manager (Quick View)**  
-1. Press **Ctrl + Shift + Esc** (or **Ctrl + Alt + Del** and select **Task Manager**).  
-2. Go to the **Performance** tab.  
-3. Click **Memory** to see total, used, and available DRAM, as well as usage percentage.  
-
-**Method 2 – Resource Monitor (Detailed View)**  
-1. Press **Windows + R**.  
-2. Type:  ```resmon```
-3. Press **Enter**.  
-4. Go to the **Memory** tab to view detailed DRAM usage and a per-process breakdown.
-
----
-
-### 🌄 Loading Images in CLI Mode (for VLMs only, e.g. gemma3:4b)
-
-Supports **.png** and **.jpg** formats.  
-
-```powershell
-/input "<image_path>" prompt
-```
-
-Example:
-
-```powershell
-/input "C:\Users\Public\Desktop\cat.jpg" describe this image
-```
-
-> Notes:
-
-* Make sure the model you are using is a **vision model (VLM)** (e.g., gemma3:4b) 
-* Put quotes **only around the file path**  
-* Do **not** use quotes around the prompt  
-* Image must be in **.jpg** or **.png** format  
-
----
-
-### 🌐 Start Server Mode
+### 🖧 Start Server Mode (Local)
 
 Launch FastFlowLM as a local REST API server (also support OpenAI API):
 
@@ -153,9 +84,43 @@ flm serve llama3.2:1b
 
 ---
 
-## 🧠 Commands Inside CLI Mode
+### ⚡ NPU Power Mode NPU Power Mode
 
-Once inside the CLI, use the following commands:
+By default, **FLM runs in `performance` NPU power mode**. You can switch to other NPU power modes (`powersaver`, `balanced`, or `turbo`) using the `--pmode` flag:
+
+For **CLI mode**:
+```powershell
+flm run gemma3:4b --pmode balanced
+```
+
+For **Server mode**:
+```powershell
+flm serve gemma3:4b --pmode balanced
+```
+
+---
+
+### 🎛️ Set Context Length at Launch
+
+In PowerShell, run:
+
+For **CLI mode**:
+```powershell
+flm run llama3.2:1b --ctx-len 8192
+```
+
+For **Server mode**:
+```powershell
+flm serve llama3.2:1b --ctx-len 8192
+```
+
+> Internally, FLM enforces a minimum context length of 512. If you specify a smaller value, it will automatically be adjusted up to 512.
+
+---
+
+## 💻 Commands Inside CLI Mode
+
+Once inside the CLI, use the following commands. System commands always start with "/" (e.g., "/help").
 
 ---
 
@@ -165,7 +130,7 @@ Once inside the CLI, use the following commands:
 /?
 ```
 
-> Displays all available interactive commands. Highly recommended for first-time users.
+> Displays all available interactive system commands. Highly recommended for first-time users.
 
 ---
 
@@ -267,6 +232,79 @@ Type `/think` to toggle Think Mode on or off interactively in the CLI.
 
 ---
 
+### 📂 Load a Local Text File in CLI Mode
+
+Use any file that can be opened in Notepad (like `.txt`, `.json`, `.csv`, etc.).
+
+Format (in CLI mode):
+
+```powershell
+/input "<file_path>" prompt
+```
+
+Example:
+
+```powershell
+/input "C:\Users\Public\Desktop\alice_in_wonderland.txt" Summarize it into 200 words
+```
+
+> Notes:
+
+* Use quotes **only around the file path**
+* **No quotes** around the prompt
+* File must be plain text (readable in Notepad)
+
+👉 [Download a sample prompt (around 40k tokens)](https://github.com/FastFlowLM/FastFlowLM/blob/main/assets/alice_in_wonderland.txt)  
+
+> ⚠️ **Caution:** a model’s supported context length is limited by available DRAM capacity. For example, with **32 GB** of DRAM, **LLaMA 3.1:8B** cannot run beyond a **32K** context length. For the full **128K** context, we recommend larger memory system.
+
+If DRAM is heavily used by other programs while running **FastFlowLM**, you may encounter errors due to insufficient memory, such as:
+
+```error
+[XRT] ERROR: Failed to submit the command to the hw queue (0xc01e0200):
+Even after the video memory manager split the DMA buffer, the video memory manager
+could not page-in all of the required allocations into video memory at the same time.
+The device is unable to continue.
+```
+
+> 🤔 Interested in checking the DRAM usage?
+
+<!-- **Method 1 – Task Manager (Quick View)**   -->
+1. Press **Ctrl + Shift + Esc** (or **Ctrl + Alt + Del** and select **Task Manager**).  
+2. Go to the **Performance** tab.  
+3. Click **Memory** to see total, used, and available DRAM, as well as usage percentage.  
+
+<!-- **Method 2 – Resource Monitor (Detailed View)**  
+1. Press **Windows + R**.  
+2. Type:  ```resmon```
+3. Press **Enter**.  
+4. Go to the **Memory** tab to view detailed DRAM usage and a per-process breakdown. -->
+
+---
+
+### 🌄 Loading Images in CLI Mode (for VLMs only, e.g. gemma3:4b)
+
+Supports **.png** and **.jpg** formats.  
+
+```powershell
+/input "<image_path>" prompt
+```
+
+Example:
+
+```powershell
+/input "C:\Users\Public\Desktop\cat.jpg" describe this image
+```
+
+> Notes:
+
+* Make sure the model you are using is a **vision model (VLM)** (e.g., gemma3:4b) 
+* Put quotes **only around the file path**  
+* Do **not** use quotes around the prompt  
+* Image must be in **.jpg** or **.png** format  
+
+---
+
 ### ⚙️ Set Variables
 
 ```text
@@ -284,17 +322,7 @@ Type `/think` to toggle Think Mode on or off interactively in the CLI.
 
 ---
 
-### 🎛️ Set Context Length at Launch
-
-In PowerShell, run:
-
-```bash
-flm run llama3.2:1b --ctx-len 8192
-```
-
-Internally, FLM enforces a minimum context length of 512. If you specify a smaller value, it will automatically be adjusted up to 512.
-
----
+## 🗂️ Others
 
 ### 🛠 Change Default Context Length (max)
 
@@ -309,7 +337,7 @@ You can also change the `default_context_length` setting.
 > ⚠️ **Note:** Be cautious! The system reserves DRAM space based on the context length you set.  
 > Setting a longer default context length may cause errors on systems with smaller DRAM.
 > Also, each model has its own context length limit (examples below).  
-> - **Qwen3** → up to **32k** tokens  
-> - **Gemma3:4b** → up to **128k** tokens
-> - **Gemma3:1b** → up to **32k** tokens
-> - **LLaMA 3.1 / 3.2** → up to **128k** tokens
+> - **qwen3-tk:4b** → up to **256k** tokens  
+> - **gemma3:4b** → up to **128k** tokens
+> - **gemma3:1b** → up to **32k** tokens
+> - **llama3.x** → up to **128k** tokens

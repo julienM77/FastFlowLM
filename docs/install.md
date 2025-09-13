@@ -45,12 +45,12 @@ For version history and changelog, see the [release notes](https://github.com/Fa
 By default, **FLM runs in `performance` NPU power mode**. You can switch to other NPU power modes (`powersaver`, `balanced`, or `turbo`) using the `--pmode` flag:
 
 **CLI mode:**
-```Powershell
+```powershell
 flm run gemma3:4b --pmode balanced
 ```
 
 **Server mode:**
-```Powershell
+```powershell
 flm serve gemma3:4b --pmode balanced
 ```
 
