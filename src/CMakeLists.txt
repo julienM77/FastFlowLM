@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(q4nx LANGUAGES CXX VERSION 0.1.0)
+project(flm LANGUAGES CXX VERSION 0.1.0)
 
 # Set build type to Release
 set(CMAKE_BUILD_TYPE Release)
@@ -7,6 +7,10 @@ set(CMAKE_BUILD_TYPE Release)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Configure CMake to stop at first error
+set(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION ON)
+set(CMAKE_ERROR_DEPRECATED ON)
 
 
 # Set output directories
@@ -19,8 +23,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 # ———————————————————————————————————————————————
 # User-tweakable XRT settings (override on cmake command-line)
 # ———————————————————————————————————————————————
-set(XRT_INCLUDE_DIR C:/Technical/XRT/src/runtime_src/core/include CACHE PATH   "Where XRT headers live")
-set(XRT_LIB_DIR     C:/Technical/xrtNPUfromDLL     CACHE PATH   "Where XRT libs live")
+set(XRT_INCLUDE_DIR C:/dev/XRT/src/runtime_src/core/include CACHE PATH   "Where XRT headers live")
+set(XRT_LIB_DIR     C:/dev/xrtNPUfromDLL     CACHE PATH   "Where XRT libs live")
 
 
 
@@ -42,7 +46,7 @@ target_include_directories(flm PUBLIC
     ${CMAKE_SOURCE_DIR}/server
     ${CMAKE_SOURCE_DIR}/pull
     ${XRT_INCLUDE_DIR}
-    C:/Program\ Files/boost/boost_1_88_0
+    C:/dev/boost_1_88_0
     C:/dev/vcpkg/installed/x64-windows/include/
 )
 
@@ -57,10 +61,11 @@ target_compile_definitions(flm PUBLIC
     # Handle legacy stdio functions
     _CRT_SECURE_NO_WARNINGS
     _CRT_NONSTDC_NO_DEPRECATE
+    _IS_WINDOWS_
 )
 
 target_link_directories(flm PUBLIC
-    C:/Program\ Files/boost/boost_1_88_0/stage/lib
+    C:/dev/boost_1_88_0/stage/lib
     ${XRT_LIB_DIR}
     ${CMAKE_SOURCE_DIR}/lib
     C:/dev/vcpkg/installed/x64-windows/lib
@@ -78,11 +83,17 @@ target_link_libraries(flm PUBLIC
     llama_npu
     qwen_npu
     gemma_npu
+    gemma_text_npu
     dequant
     gemm
     lm_head
     npu_utils
     libcurl
+    avformat
+    avcodec
+    avutil
+    swscale
+    libboost_program_options-vc143-mt-x64-1_88
 )
 
 target_link_libraries(flm PRIVATE
