@@ -6,13 +6,14 @@ parent: Local Server (Server Mode)
 
 # 📑 Table of Contents
 
-- **[🧩 Run Open WebUI with FastFlowLM (Windows, YAML Method)](#-run-open-webui-with-fastflowlm-windows-yaml-method)**
+- **[🧩 Run Open WebUI with FastFlowLM](#-run-open-webui-with-fastflowlm)**
 - **[🧪 More Examples](#-more-examples)**
-  - [🤖 Example: Multi Models Comparison Enabled by FLM Queuing (v0.9.10 or beyond)](#-example-multi-models-comparison-enabled-by-flm-queuing-v0910-or-beyond)
+  - [Example: Multi Models Comparision Enabled by FLM Queuing](#-example-multi-models-comparision-enabled-by-flm-queuing)
+  - [Example: Web Search Integration](#-example-web-search-integration)
 
 ---
 
-# 🧩 Run Open WebUI with FastFlowLM (Windows, YAML Method)
+# 🧩 Run Open WebUI with FastFlowLM
 
 This guide walks you through using `docker-compose.yaml` to run Open WebUI connected to a local FastFlowLM instance on Windows.
 
@@ -160,7 +161,7 @@ docker compose pull
 
 > **Note (When using Open WebUI):**  
 > The **Open WebUI** sends multiple background requests to the **server**.  
-> To improve stability and performance, disable these in **Settings → Chat**:
+> To improve stability and performance, you can disable these in **Settings → Chat**:
 > - **Title Auto-Generation**
 > - **Follow-Up Auto-Generation**
 > - **Chat Tags Auto-Generation**
@@ -171,7 +172,11 @@ docker compose pull
 
 # 🧪 More Examples
 
-## 🤖 Example: Multi Models Comparision Enabled by FLM Queuing (v0.9.10 or beyond)
+Well done 🎉 — now let’s explore more apps together!
+
+---
+
+## 🤖 Example: Multi Models Comparision Enabled by FLM Queuing
 
 A step-by-step guide to launching FastFlowLM and interacting with multiple models via Open WebUI.
 
@@ -216,5 +221,61 @@ After receiving replies from multiple models, choose how you'd like to continue:
 
 - 🔗 **Merge All Responses**  
   Combine insights from all models and continue the conversation using your preferred model. This lets you synthesize multiple perspectives into a unified thread.
+
+---
+
+## 🌐 Example: Web Search Integration
+
+Step-by-step guide to powering Agentic AI web search in Open WebUI — NPU-only, lightning-fast, with Google PSE + FLM.
+
+---
+
+### 🛠️ Step 1: Set Up Google PSE
+
+1. Go to [Google Programmable Search Engine](https://developers.google.com/custom-search) and sign in or create an account. Click `create a search engine`. Review the *Overview* page.
+2. Visit the [Control Panel](https://programmablesearchengine.google.com/controlpanel/all) and click the `Add` button.
+3. Fill in:
+	- A **name** for your search engine (e.g., flm-search)
+	- **What to search?** (e.g., select `Search the entire web`)
+	- **Search settings** (e.g., enable `Image search`)
+	- Verify you’re not a robot
+	- Then click **`Create`**
+4. After creation, click **`Customize`**.
+5. Copy and save your **Search Engine ID** (you’ll need it later).
+6. Scroll down to **Programmatic Access** → click **Get started**.
+7. Find **Programmable Search Engine (free edition) users** → click **Get a Key**.
+8. Select `Create a project` → Enter new project name (e.g., owbui-search) → click next → click `SHOW KEY` to reveal your **API key** → copy and save it (you'll need it later).
+
+---
+
+### 🌐 Step 2: Run Open WebUI with FastFlowLM
+
+Follow the quick setup guide **[here](#-example-multi-models-comparison-enabled-by-flm-queuing-v0910-or-beyond)**.
+
+---
+### 🧩 Step 3: Enable Web Search in Open WebUI
+
+With your **API Key** and **Search Engine ID** from Step 1, follow these steps:
+
+1. In the **bottom-left corner**, click **`User`** icon, then select **`Settings`**.
+2. In the **bottom panel**, open **`Admin Settings`**.
+3. From the **left sidebar**, click **`Web Search`**.
+4. Under `General`, toggle **`Web Search`** to enable web search function.
+5. Set **`Web Search Engine`** as **`google_pse`**.
+6. Enter your saved:
+    - **Google PSE API Key**
+    - **Google PSE Engine ID**
+7. Under `Loader`, set `Concurrent Requests` to 10 or more (optional).
+8. Click **`Save`**.
+
+---
+
+### 💬 Step 4: Start Using Web Search
+
+1. Start a new chat and select your preferred model (e.g., qwen3-tk:4b).
+> ⚠️ **Note:** not all models handle web search well.
+2. Under the chat input box, Click `integrations`, and toggle **Web Search** to activate it .
+- 🔄 You’ll need to activate this **every time you start a new chat**. 
+3. Ask anything you're curious about—real-time search will enhance your answers!
 
 ---

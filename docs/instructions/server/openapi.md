@@ -6,9 +6,10 @@ parent: Local Server (Server Mode)
 
 # 📑 Table of Contents
 
-- **[📡 How Does the OpenAI Standard Work?](#-how-does-the-openai-standard-work)**  
-- **[📚 Developer Support](#-developer-support)**  
-- **[🚀 Quick Test: Use OpenAI SDK with FastFlowLM in Python](#-quick-test-use-openai-sdk-with-fastflowlm-in-python)**  
+- **[📡 How Does the OpenAI Standard Work?](#-how-does-the-openai-standard-work)**
+- **[📚 Developer Support](#-developer-support)**
+- **[🚀 Quick Test: Use OpenAI SDK with FastFlowLM in Python](#-quick-test-use-openai-sdk-with-fastflowlm-in-python)**
+- **[📌 Notes](#-notes)**
 - **[🧪 More Examples](#-more-examples)**
   - [Example: Multi-turn Chat (Conversation History)](#-example-multi-turn-chat-conversation-history)
   - [Example: Streamed Output (Real-Time Response)](#-example-streamed-output-real-time-response)
@@ -294,7 +295,7 @@ gc.collect()
 
 ---
 
-## 🖼️ Example: Multi-Image Input
+## 📷 Example: Multi-Image Input
 
 Send multiple images together with a text prompt.  
 The model will analyze them, compare, and respond with reasoning.
