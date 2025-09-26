@@ -2,13 +2,14 @@
 /// \brief Main entry point for the FLM application
 /// \author FastFlowLM Team
 /// \date 2025-08-05
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a source file for the main entry point
 #pragma once
 #include "runner.hpp"
 #include "server.hpp"
 #include "model_list.hpp"
 #include "model_downloader.hpp"
+#include "update.hpp"
 #include "utils/utils.hpp"
 #include "minja/chat-template.hpp"
 #include <iostream>
@@ -126,21 +127,28 @@ std::unique_ptr<WebServer> create_lm_server(model_list& models, ModelDownloader&
 
 ///@brief get_server_port gets the server port from environment variable FLM_SERVE_PORT
 ///@return the server port, default is 11434 if environment variable is not set
-int get_server_port() {
-    char* port_env = nullptr;
-    size_t len = 0;
-    if (_dupenv_s(&port_env, &len, "FLM_SERVE_PORT") == 0 && port_env != nullptr) {
-        try {
-            int port = std::stoi(port_env);
-            free(port_env);
-            if (port > 0 && port <= 65535) {
-                return port;
+int get_server_port(int user_port) {
+    if (user_port > 0 && user_port <= 65535) {
+        return user_port;
+    }
+    else {
+        char* port_env = nullptr;
+        size_t len = 0;
+        if (_dupenv_s(&port_env, &len, "FLM_SERVE_PORT") == 0 && port_env != nullptr) {
+            try {
+                int port = std::stoi(port_env);
+                free(port_env);
+                if (port > 0 && port <= 65535) {
+                    return port;
+                }
             }
-        } catch (const std::exception&) {
-            free(port_env);
-            // Invalid port number, use default
+            catch (const std::exception&) {
+                free(port_env);
+                // Invalid port number, use default
+            }
         }
     }
+
     return 11434; // Default port
 }
 
@@ -182,6 +190,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    if (parsed_args.port_requested) {
+        std::cout << "Default server port: " << get_server_port(-1) << std::endl;
+        return 0;
+    }
+
     
     // Extract parsed values
     std::string command = parsed_args.command;
@@ -193,6 +206,7 @@ int main(int argc, char* argv[]) {
     bool preemption = parsed_args.preemption;
     size_t max_socket_connections = parsed_args.max_socket_connections;
     size_t max_npu_queue = parsed_args.max_npu_queue;
+    int user_port = parsed_args.port;
 
     // Set process priority to high for better performance
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
@@ -202,6 +216,13 @@ int main(int argc, char* argv[]) {
         tag = "llama3.2:1b"; // Use default tag
     }
     
+    if (command == "run" || command == "serve" || command == "pull" || command == "remove") {
+      if (!modelTags.count(tag)) {
+            header_print("ERROR", "Model not found: " << tag << "; Please check with `flm list` and try again.");
+            return 1;
+        }
+    }
+  
     if (command == "serve" || command == "run"){
         // Configure AMD XRT for the specified power mode
         if (power_mode == "default" || power_mode == "powersaver" || power_mode == "balanced" || 
@@ -239,15 +260,17 @@ int main(int argc, char* argv[]) {
         }
 
         if (command == "run") {
+            check_and_notify_new_version();
             Runner runner(supported_models, downloader, tag, ctx_length, preemption);
             runner.run();
 
         } else if (command == "serve") {
+            check_and_notify_new_version();
             // Create the server
-            int port = get_server_port();
+            int port = get_server_port(user_port);
             auto server = create_lm_server(supported_models, downloader, tag, port, ctx_length);
             server->set_max_connections(max_socket_connections);           // Allow up to 10 concurrent connections
-            server->set_io_threads(5);          // Allow up to 5 io threads
+            server->set_io_threads(10);          // Allow up to 5 io threads
             server->set_npu_queue_length(max_npu_queue);           // Allow up to 10 concurrent queue
             server->set_request_timeout(std::chrono::seconds(600)); // 10 minute timeout for long requests
             // Start the server
@@ -326,6 +349,33 @@ int main(int argc, char* argv[]) {
     }
 }
 
+//int main(int argc, char* argv[])
+//{
+//    //check_and_notify_new_version();
+//    std::string exe_dir = get_executable_directory();
+//    std::string config_path = exe_dir + "/model_list.json";
+//    std::string models_dir = get_models_directory();
+//
+//    chat_meta_info_t a;
+//
+//    std::string tag = "gpt-oss";
+//    model_list supported_models(config_path, models_dir);
+//    ModelDownloader downloader(supported_models);
+//    //Runner runner(supported_models, downloader, tag, -1, 0);
+//    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(tag);
+//    std::unique_ptr<AutoModel> auto_chat_engine = std::move(auto_model.second);
+//    tag = auto_model.first;
+//    auto_chat_engine->load_model(supported_models.get_model_path(tag), supported_models.get_model_info(tag), -1, 0);
+//
+//
+//    lm_uniform_input_t input;
+//    input.prompt = "hi how are you?";
+//    nlohmann::ordered_json messages;
+//    messages.push_back({ {"role", "user"}, {"content", input.prompt} });
+//    std::string templated_text = auto_chat_engine->apply_chat_template(messages);
+//    auto_chat_engine->insert(a, input);
+//    //std::cout << templated_text << std::endl;
+//}
 
 //int main(int argc, char* argv[])
 //{

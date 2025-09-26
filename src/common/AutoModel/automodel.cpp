@@ -2,11 +2,22 @@
 /// \brief automodel class
 /// \author FastFlowLM Team
 /// \date 2025-09-01
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a source file for the auto_model class
 
 #include "AutoModel/automodel.hpp"
 
+std::unordered_set<std::string> modelTags = {
+        "llama3.1", "llama3.1:8b",
+        "llama3.2","llama3.2:1b", "llama3.2:3b",
+        "deepseek-r1", "deepseek-r1:8b",
+        "qwen3", "qwen3:0.6b", "qwen3:1.7b", "qwen3:4b", "qwen3:8b",
+        "qwen3-it", "qwen3-it:4b",
+        "qwen3-tk", "qwen3-tk:4b",
+        "gemma3", "gemma3:270m", "gemma3:1b",
+        "gemma3:4b",
+        "medgemma", "medgemma:4b"
+};
 
 AutoModel::AutoModel(unsigned int device_id) {
     this->device_id = device_id;
@@ -54,7 +65,7 @@ nlohmann::json AutoModel::_shared_setup_tokenizer(std::string model_path) {
         this->has_bos_token ? tokenizer_config["bos_token"] : "",
         tokenizer_config["eos_token"]
     );
-    
+
     if (this->has_bos_token) {
         this->bos_token_id = tokenizer_config["bos_token_id"].get<int>();
     }

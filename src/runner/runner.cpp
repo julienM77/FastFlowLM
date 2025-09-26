@@ -4,7 +4,7 @@
 *  \brief Runner implementation for interactive model execution
 *  \author FastFlowLM Team
 *  \date 2025-08-05
-*  \version 0.9.10
+*  \version 0.9.11
 */
 #include "runner.hpp"
 #include <iostream>
@@ -261,6 +261,10 @@ void Runner::cmd_load(std::vector<std::string>& input_list) {
     std::string model_name = input_list[1];
     if (model_name != this->tag) {
         this->tag = model_name;
+        if (!modelTags.count(tag)) {
+            header_print("ERROR", "Model not found: " << tag << "; Please check with `/list`");
+            return;
+        }
         if (!this->downloader.is_model_downloaded(this->tag)) {
             this->downloader.pull_model(this->tag);
         }
@@ -269,9 +273,9 @@ void Runner::cmd_load(std::vector<std::string>& input_list) {
         this->auto_chat_engine = std::move(auto_model.second);
         this->tag = auto_model.first;
     }
-    
+
     nlohmann::json model_info = this->supported_models.get_model_info(this->tag);
-    
+
     this->auto_chat_engine->load_model(this->supported_models.get_model_path(this->tag), model_info, this->ctx_length, this->preemption);
     this->auto_chat_engine->configure_parameter("system_prompt", this->system_prompt);
 }

@@ -2,7 +2,7 @@
 /// \brief automodel class
 /// \author FastFlowLM Team
 /// \date 2025-09-01
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a header file for the auto_model class
 #pragma once
 
@@ -95,6 +95,7 @@ using json = nlohmann::ordered_json;
 //    stop_reason_t stop_reason;
 //} chat_meta_info_t;
 
+extern std::unordered_set<std::string> modelTags;
 
 class AutoModel {
 protected:

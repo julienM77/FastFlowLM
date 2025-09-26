@@ -2,7 +2,7 @@
 /// \brief vm_args class
 /// \author FastFlowLM Team
 /// \date 2025-06-24
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This class is used to parse the command line arguments.
 #pragma once
 
@@ -23,12 +23,14 @@ struct ParsedArgs {
     std::string power_mode;
     bool force_redownload;
     bool version_requested;
+    bool port_requested;
     bool preemption;
     int ctx_length;
     size_t max_socket_connections;
     size_t max_npu_queue;
+    int port;
     ParsedArgs() : power_mode("performance"), force_redownload(false), 
-                   version_requested(false) {}
+                   version_requested(false), port_requested(false) {}
 };
 
 /// \brief parse the options using Boost Program Options with positional arguments
@@ -45,6 +47,8 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
             ("version,v", "Show version information")
             ("pmode", po::value<std::string>(&parsed_args.power_mode)->default_value("performance"),
              "Set power mode: powersaver, balanced, performance, turbo")
+            ("port,p", po::value<int>(&parsed_args.port)->default_value(-1), 
+             "Set the server port number (for serve command)")
             ("force", po::bool_switch(&parsed_args.force_redownload),
              "Force re-download even if model exists (for pull command)")
             ("ctx-len,c", po::value<int>(&parsed_args.ctx_length)->default_value(-1),
@@ -92,6 +96,7 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
             std::cout << "  list                - List all available models" << std::endl;
             std::cout << "  version             - Show version information" << std::endl;
             std::cout << "  help                - Show this help message" << std::endl;
+            std::cout << "  port                - Show the default server port" << std::endl;
             std::cout << std::endl;
             std::cout << general << std::endl;
             std::cout << "Examples:" << std::endl;
@@ -101,6 +106,7 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
             std::cout << "  " << argv[0] << " serve llama3.2:1b --ctx-len 8192" << std::endl;
             std::cout << "  " << argv[0] << " serve llama3.2:1b --socket 10" << std::endl;
             std::cout << "  " << argv[0] << " serve llama3.2:1b --q-len 10" << std::endl;
+            std::cout << "  " << argv[0] << " serve llama3.2:1b --port 8000" << std::endl;
             std::cout << "  " << argv[0] << " list" << std::endl;
             return false; // Exit after showing help
         }
@@ -128,6 +134,7 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
                 std::cout << "  list                - List all available models" << std::endl;
                 std::cout << "  version             - Show version information" << std::endl;
                 std::cout << "  help                - Show this help message" << std::endl;
+                std::cout << "  port                - Show the default server port" << std::endl;
                 std::cout << std::endl;
                 std::cout << general << std::endl;
                 std::cout << "Examples:" << std::endl;
@@ -137,12 +144,17 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
                 std::cout << "  " << argv[0] << " serve llama3.2:1b --ctx-len 8192" << std::endl;
                 std::cout << "  " << argv[0] << " serve llama3.2:1b --socket 10" << std::endl;
                 std::cout << "  " << argv[0] << " serve llama3.2:1b --q-len 10" << std::endl;
+                std::cout << "  " << argv[0] << " serve llama3.2:1b --port 8000" << std::endl;
                 std::cout << "  " << argv[0] << " list" << std::endl;
                 return false; // Exit after showing help
             }
             
             if (parsed_args.command == "version") {
                 parsed_args.version_requested = true;
+                return true;
+            }
+            if (parsed_args.command == "port") {
+                parsed_args.port_requested = true;
                 return true;
             }
         } else {
@@ -171,6 +183,11 @@ bool parse_options(int argc, char *argv[], ParsedArgs& parsed_args) {
             if (!vm["q-len"].defaulted())
             {
                 std::cerr << "Error: Max npu queue length is only required for serve command! " << std::endl;
+                return false;
+            }
+            if (!vm["port"].defaulted())
+            {
+                std::cerr << "Error: The port number option is only supported with the serve command! " << std::endl;
                 return false;
             }
         }

@@ -4,7 +4,7 @@
  * \brief WebServer class and related declarations
  * \author FastFlowLM Team
  * \date 2025-06-24
- * \version 0.9.10
+ * \version 0.9.11
  */
 #include "server.hpp"
 #include "rest_handler.hpp"
@@ -189,6 +189,8 @@ bool NPUAccessManager::try_acquire_npu_access() {
 }
 
 void NPUAccessManager::release_npu_access() {
+
+    header_print("🔵 ", "NPU Lock Released!" );
     std::lock_guard<std::mutex> lock(g_npu_access_mutex);
     g_npu_in_use.store(false);
     g_npu_active_requests.fetch_sub(1);
@@ -479,7 +481,7 @@ void WebServer::start() {
         });
     }
     
-    header_print("LOG", "WebServer started on port " + std::to_string(port) + " with " + std::to_string(io_thread_count_) + " I/O threads");
+    header_print("FLM", "WebServer started on port " + std::to_string(port) + " with " + std::to_string(io_thread_count_) + " I/O threads");
 }
 
 ///@brief stop
@@ -562,29 +564,25 @@ void WebServer::do_accept() {
 ///@brief process_next_npu_request Handles one queued NPU task at a time
 void WebServer::process_next_npu_request() {
     // Lock the queue to check it
-    std::lock_guard<std::mutex> lock(npu_queue_mutex_);
+    //std::lock_guard<std::mutex> lock(npu_queue_mutex_);
 
     if (npu_request_queue_.empty()) {
+
+        NPUAccessManager::release_npu_access();
         return; // Queue is empty, NPU is free
     }
 
     // Queue is not empty. Try to acquire the NPU lock.
-    if (NPUAccessManager::try_acquire_npu_access()) {
-        // Got the NPU lock! Pop the next task and post it to the io_context.
-        auto task = npu_request_queue_.front();
-        npu_request_queue_.pop();
+    // 
+    // Got the NPU lock! Pop the next task and post it to the io_context.
+    auto task = npu_request_queue_.front();
+    npu_request_queue_.pop();
 
-        header_print("🟢 ", "Dequeuing NPU request (" + std::to_string(npu_request_queue_.size()) + " remaining)...");
+    header_print("🟡 ", "Dequeuing NPU request (" + std::to_string(npu_request_queue_.size()) + " remaining)...");
 
-        // Post the task to be executed by the io_context
-        net::post(ioc, task);
-    }
-    else {
-        // NPU is still busy. This can happen if a new request
-        // acquired the lock between release() and this call.
-        // That's fine. The request *currently* using the NPU
-        // will call this function again when it finishes.
-    }
+    // Post the task to be executed by the io_context
+    net::post(ioc, task);
+ 
 }
 
 ///@brief handle request
@@ -633,10 +631,6 @@ bool WebServer::handle_request(http::request<http::string_body>& req,
     // Define a task lambda with is_deferred flag
     auto process_task = [this, it, &req, &res, session, needs_npu, key](bool is_deferred) {
 
-        if (needs_npu) {
-            header_print("🟢 ", "NPU access granted for request: " + key);
-        }
-
         // Parse JSON request body
         json request_json;
         try {
@@ -654,8 +648,6 @@ bool WebServer::handle_request(http::request<http::string_body>& req,
             if (is_deferred && session) session->write_response_from_callback();
 
             if (needs_npu) {
-                NPUAccessManager::release_npu_access();
-                header_print("🔵 ", "NPU access released (JSON parse error)");
                 this->process_next_npu_request();
             }
             return;
@@ -683,8 +675,6 @@ bool WebServer::handle_request(http::request<http::string_body>& req,
             unregister_active_request(request_id);
 
             if (needs_npu) {
-                NPUAccessManager::release_npu_access();
-                header_print("🔵 ", "NPU access released for request: " + request_id);
                 this->process_next_npu_request();
             }
 
@@ -701,8 +691,6 @@ bool WebServer::handle_request(http::request<http::string_body>& req,
                 unregister_active_request(request_id);
 
                 if (needs_npu) {
-                    NPUAccessManager::release_npu_access();
-                    header_print("🔵 ", "NPU access released for streaming request: " + request_id);
                     this->process_next_npu_request();
                 }
             }
@@ -720,6 +708,9 @@ bool WebServer::handle_request(http::request<http::string_body>& req,
     }
 
     if (NPUAccessManager::try_acquire_npu_access()) {
+        if (needs_npu) {
+            header_print("🟢 ", "NPU Locked!");
+        }
         process_task(false); //  return false
         return false;
     }

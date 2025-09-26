@@ -2,7 +2,7 @@
 /// \brief gemma3 class
 /// \author FastFlowLM Team
 /// \date 2025-09-03
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a source file for the gemma3 class
 
 #pragma once

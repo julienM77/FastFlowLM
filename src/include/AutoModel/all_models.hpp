@@ -2,7 +2,7 @@
 /// \brief all_models class
 /// \author FastFlowLM Team
 /// \date 2025-09-10
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a header file for the all_models class
 #pragma once
 
@@ -10,6 +10,7 @@
 #include "modeling_gemma3_text.hpp"
 #include "modeling_llama3.hpp"
 #include "modeling_qwen3.hpp"
+#include "modeling_gpt_oss.hpp"
 
 
 
@@ -42,6 +43,9 @@ inline std::pair<std::string, std::unique_ptr<AutoModel>> get_auto_model(const s
         "gemma3:4b", 
         "medgemma", "medgemma:4b"
     };
+    static std::unordered_set<std::string> gpt_oss_tags = {
+        "gpt-oss:20b", "gpt-oss"
+    };
 
     std::unique_ptr<AutoModel> auto_chat_engine = nullptr;
     std::string new_model_tag = model_tag;
@@ -61,6 +65,8 @@ inline std::pair<std::string, std::unique_ptr<AutoModel>> get_auto_model(const s
         auto_chat_engine = std::make_unique<Gemma3_Text_Only>(0);
     else if (gemma3_vlm_tags.count(model_tag))
         auto_chat_engine = std::make_unique<Gemma3>(0);
+    else if (gpt_oss_tags.count(model_tag))
+        auto_chat_engine = std::make_unique<GPT_OSS>(0);
     else {
         new_model_tag = "llama3.2:1b"; // No arguments, use default tag
         auto_chat_engine = std::make_unique<Llama3>(0);

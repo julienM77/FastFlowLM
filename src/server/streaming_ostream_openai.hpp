@@ -4,7 +4,7 @@
  * \brief Custom ostream for streaming
  * \author FastFlowLM Team
  * \date 2025-06-24
- * \version 0.9.10
+ * \version 0.9.11
  */
 #pragma once
 
@@ -277,6 +277,8 @@ public:
         : model_name(model), stream_callback(callback), first_chunk(true) {
         // Generate a unique ID for this stream
         generate_stream_id();
+        generate_created();
+        generate_system_fingerprint();
     }
 
 protected:
@@ -323,6 +325,28 @@ private:
         }
         stream_id = ss.str();
     }
+
+    void generate_created() {
+        created = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+    }
+
+
+    void generate_system_fingerprint() {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, 15);
+
+        std::stringstream ss;
+        ss << "fp_";
+        for (int i = 0; i < 16; ++i) {
+            ss << std::hex << dis(gen);
+        }
+        system_fingerprint = ss.str();
+    }
+
+
 
     ///@brief Get UTF-8 sequence length from first byte
     ///@param first_byte the first byte
@@ -390,37 +414,13 @@ private:
     void send_response(const std::string& content, bool is_final) {
         json response;
 
-        //if (first_chunk) {
-        //    // First chunk with role
-        //    response = {
-        //        {"id", stream_id},
-        //        {"object", "chat.completion.chunk"},
-        //        {"created", 1694268190},
-        //        {"model", "gemma3:4b"},
-        //        {"system_fingerprint", "fp_44709d6fcb"},
-        //        {"choices", json::array({
-        //            {
-        //                {"index", 0},
-        //                {"delta", {
-        //                    {"role", "assistant"},
-        //                    {"content", nullptr}
-        //                }},
-        //                //{"logprobs", nullptr},
-        //                {"finish_reason", nullptr}
-        //            }
-        //        })}
-        //    };
-        //    first_chunk = false;
-        //    stream_callback("data: " + response.dump() + "\n\n", false);
-        //}
-
         // Content chunk
         response = {
             {"id", stream_id},
             {"object", "chat.completion.chunk"},
-            {"created", 1694268190},
+            {"created", created},
             {"model", model_name},
-            {"system_fingerprint", "fp_44709d6fcb"},
+            {"system_fingerprint", system_fingerprint},
             {"choices", json::array({
                 {
                     {"index", 0},
@@ -439,54 +439,38 @@ private:
 
     ///@brief Send the chat final response
     void send_final_response(chat_meta_info_t& meta_info) {
-        //if (first_chunk) {
-        //    // If no content was sent, send role first
-        //    json response = {
-        //        {"id", stream_id},
-        //        {"object", "chat.completion.chunk"},
-        //        {"created", 1694268190},
-        //        {"model", "gemma3:4b"},
-        //        {"system_fingerprint", "fp_44709d6fcb"},
-        //        {"choices", json::array({
-        //            {
-        //                {"index", 0},
-        //                {"message", {
-        //                    {"role", "assistant"},
-        //                    {"content", ""}
-        //                }},
-        //            {"logprobs", {}},
-        //            {"finish_reason", "stop"}
-        //            }
-        //        })}
-        //    };
-        //    stream_callback("data: " + response.dump() + "\n\n", false);
-        //}
-
-        // Send final chunk with finish_reason only (no empty delta)
         json final_response = {
             {"id", stream_id},
             {"object", "chat.completion.chunk"},
-            {"created", 1694268190},
+            {"created", created},
             {"model", model_name},
-            {"system_fingerprint", "fp_44709d6fcb"},
-            {"choices", json::array({
-                {
-                    {"index", 0},
-                    {"delta", {
-                         {"role", "assistant"},
-                         {"content", ""}
-                    }},
-                    //{"logprobs", nullptr},
-                    {"finish_reason", "stop"}
-                }
-            })}
-            //{"usage", {
-            //    {"prompt_tokens", meta_info.prompt_tokens},
-            //    {"completion_tokens", meta_info.generated_tokens},
-            //    {"total_tokens", meta_info.prompt_tokens + meta_info.generated_tokens}
-            //}}
+            {"system_fingerprint", system_fingerprint},
+            //{"choices", json::array({
+            //    {
+            //        //{"index", 0},
+            //        //{"delta", {
+            //        //     {"role", "assistant"},
+            //        //     {"content", ""}
+            //        //}},
+            //        //{"logprobs", nullptr},
+            //        {"finish_reason", "stop"}
+            //    }
+            //})},
+            {"usage", {
+                {"prompt_tokens", meta_info.prompt_tokens},
+                {"completion_tokens", meta_info.generated_tokens},
+                {"total_tokens", meta_info.prompt_tokens + meta_info.generated_tokens},
+                {"load_duration", static_cast<double>(meta_info.load_duration) / 1'000'000'000},
+                {"prefill_duration_ttft", static_cast<double>(meta_info.prefill_duration) / 1'000'000'000},
+                {"decoding_duration", static_cast<double>(meta_info.decoding_duration) / 1'000'000'000},
+                {"prefill_speed_tps", static_cast<double>(meta_info.prompt_tokens) / static_cast<double>(meta_info.prefill_duration) * 1'000'000'000},
+                {"decoding_speed_tps", static_cast<double>(meta_info.generated_tokens) / static_cast<double>(meta_info.decoding_duration) * 1'000'000'000},
+            }}
         };
+        //float prefill_speed = this->profiler_list[PREFILL_TIME].get_average_speed();
+        //float decoding_speed = this->profiler_list[DECODING_TIME].get_average_speed();
         stream_callback("data: " + final_response.dump() + "\n\n", false);
+        std::cout << "ChatCompletionChunk: " << final_response << std::endl;
         // Send the [DONE] message
         stream_callback("data: [DONE]\n\n", true);
     }
@@ -500,6 +484,8 @@ private:
     StreamCallback stream_callback;
     ///@brief Stream ID
     std::string stream_id;
+    long created;
+    std::string system_fingerprint;
     ///@brief First chunk flag
     bool first_chunk;
 };

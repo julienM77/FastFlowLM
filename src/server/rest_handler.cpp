@@ -4,7 +4,7 @@
  * \brief RestHandler class and related declarations
  * \author FastFlowLM Team
  * \date 2025-08-05
- * \version 0.9.10
+ * \version 0.9.11
  */
 #include "rest_handler.hpp"
 #include "wstream_buf.hpp"
@@ -46,6 +46,7 @@ RestHandler::~RestHandler() = default;
 void RestHandler::ensure_model_loaded(const std::string& model_tag) {
     std::string ensure_tag = model_tag;
     if (current_model_tag != ensure_tag) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if (!downloader.is_model_downloaded(model_tag)) {
             downloader.pull_model(model_tag);
         }

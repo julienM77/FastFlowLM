@@ -2,7 +2,7 @@
 /// \brief deepseek class
 /// \author FastFlowLM Team
 /// \date 2025-09-01
-/// \version 0.9.10
+/// \version 0.9.11
 /// \note This is a source file for the deepseek class
 
 
