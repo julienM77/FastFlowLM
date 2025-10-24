@@ -481,16 +481,16 @@ buffer<bf16> Gemma3::preprocess_image(bytes& image) {
         __m128i b_b = f32o_bf16(b_f);
 
         // Extract 8 bf16 values
-        union { __m128i v; uint16_t a[8]; } ru{r_b}, gu{g_b}, bu{b_b};
+        union { __m128i v; bf16 a[8]; } ru{r_b}, gu{g_b}, bu{b_b};
 
         // Store into result buffer
         for (int i = 0; i < pixels_per_vector; i++) {
             int row = (idx + i) / 896;
             int col = (idx + i) % 896;
             size_t base = row * 896 + col;
-            result[0 * total_pixels + base] = bf16_t(ru.a[i]);
-            result[1 * total_pixels + base] = bf16_t(gu.a[i]);
-            result[2 * total_pixels + base] = bf16_t(bu.a[i]);
+            result[0 * total_pixels + base] = ru.a[i];
+            result[1 * total_pixels + base] = gu.a[i];
+            result[2 * total_pixels + base] = bu.a[i];
         }
     }
 
