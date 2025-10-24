@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  *  Copyright (c) 2023 by Contributors
  * \file rest_handler.cpp
  * \brief RestHandler class and related declarations
@@ -323,6 +323,8 @@ void RestHandler::handle_chat(const json& request,
                              std::shared_ptr<CancellationToken> cancellation_token) {
     try {
         nlohmann::ordered_json messages = request["messages"];
+
+        messages = normalize_messages(messages);
         bool stream = request.value("stream", false);
         std::string model = request.value("model", current_model_tag);
         std::string reasoning_effort = request.value("reasoning_effort", "medium");
@@ -632,6 +634,9 @@ void RestHandler::handle_openai_chat_completion(const json& request,
     try {
         // Extract OpenAI-style parameters
         nlohmann::ordered_json messages_openai = request["messages"];
+
+        messages_openai = normalize_messages(messages_openai);
+
         std::string model = request.value("model", current_model_tag);
         std::string reasoning_effort = request.value("reasoning_effort", "medium");
         bool stream = request.value("stream", false);

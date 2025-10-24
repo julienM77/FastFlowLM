@@ -1,10 +1,26 @@
 ---
-title: OpenAI API Standard
+title: OpenAI API + Examples
 nav_order: 1
 parent: Local Server (Server Mode)
 ---
 
-## 📡 How Does the OpenAI Standard Work?
+# 📑 Table of Contents
+
+- **[📡 How Does the OpenAI Standard Work?](#-how-does-the-openai-standard-work)**
+- **[📚 Developer Support](#-developer-support)**
+- **[🚀 Quick Test: Use OpenAI SDK with FastFlowLM in Python](#-quick-test-use-openai-sdk-with-fastflowlm-in-python)**
+- **[📌 Notes](#-notes)**
+- **[🧪 More Examples](#-more-examples)**
+  - [Example: Multi-turn Chat (Conversation History)](#-example-multi-turn-chat-conversation-history)
+  - [Example: Streamed Output (Real-Time Response)](#-example-streamed-output-real-time-response)
+  - [Example: Use a File as the Prompt](#-example-use-a-file-as-the-prompt)
+  - [Example: Batch Requests (Multiple Prompts)](#-example-batch-requests-multiple-prompts)
+  - [Example: Use Temperature, Top-p, and Presence Penalty](#-example-use-temperature-top-p-and-presence-penalty)
+  - [Example: Multi-Image Input](#-example-multi-image-input)
+
+---
+
+# 📡 How Does the OpenAI Standard Work?
 
 The **OpenAI API standard** defines a simple and powerful way for applications to communicate with language models — whether running in the cloud or locally.
 
@@ -20,7 +36,7 @@ This structure makes it easy to build multi-turn conversations with consistent b
 
 ---
 
-### 📚 Developer Support
+## 📚 Developer Support
 
 OpenAI provides [official libraries](https://platform.openai.com/docs/libraries/python-library#install-an-official-sdk) in multiple programming languages to help developers follow the standard easily: **Python**, **JavaScript**, **.NET**, **Java**, and **Go**.
 
@@ -28,13 +44,13 @@ These libraries make it easy to send prompts, receive completions, and integrate
 
 ---
 
-## 🚀 Quick Test: Use OpenAI SDK with FastFlowLM in Python
+# 🚀 Quick Test: Use OpenAI SDK with FastFlowLM in Python
 
 You can try this instantly in any Python environment — including Jupyter Notebook. Follow the steps below by copying each block into a notebook cell.
 
 ---
 
-### ✅ Step 0: Start FastFlowLM in Server Mode
+## ✅ Step 0: Start FastFlowLM in Server Mode
 
 Open PowerShell or terminal and launch the model server:
 
@@ -42,19 +58,19 @@ Open PowerShell or terminal and launch the model server:
 flm serve llama3.2:1b
 ```
 
-> 🧠 This loads the model and starts the FastFlowLM OpenAI-compatible API at `http://localhost:11434/v1`.
+> 🧠 This loads the model and starts the FastFlowLM OpenAI-compatible API at `http://localhost:52625/v1`.
 
 ---
 
-### ✅ Step 1: Install the OpenAI Python SDK
+## ✅ Step 1: Install the OpenAI Python SDK
 
 ```python
-!pip install --upgrade openai
+pip install --upgrade openai
 ```
 
 ---
 
-### ✅ Step 2: Send a Chat Request to FastFlowLM
+## ✅ Step 2: Send a Chat Request to FastFlowLM
 
 ```python
 # Quick Start
@@ -62,7 +78,7 @@ from openai import OpenAI
 
 # Connect to local FastFlowLM server
 client = OpenAI(
-    base_url="http://localhost:11434/v1",  # FastFlowLM's local API endpoint
+    base_url="http://localhost:52625/v1",  # FastFlowLM's local API endpoint
     api_key="flm"  # Dummy key (FastFlowLM doesn’t require authentication)
 )
 
@@ -86,25 +102,25 @@ gc.collect()
 
 ---
 
-### 📌 Notes
+## 📌 Notes
 
 - 🧠 You can replace `"llama3.2:1b"` with any other model available via `flm run` or `flm pull`.
 - 🖥 Make sure the FastFlowLM server is running in the background (`flm serve ...`).
 - 🔒 No real API key is needed — just pass `"flm"` as a placeholder.
-- ⚡ FastFlowLM runs fully offline and is optimized for AMD Ryzen AI NPUs.
+- ⚡ FastFlowLM runs fully offline and is optimized for AMD Ryzen™ AI NPUs.
 
 > ✅ This setup is perfect for quick offline LLM testing using standard OpenAI tooling.
 
 ---
 
-## 🧪 More Examples
+# 🧪 More Examples
 
 🚀 Ah — that was easy, right?  
 Now let’s kick things up a notch with some awesome next-level examples!
 
 ---
 
-### 💬 Example: Multi-turn Chat (Conversation History)
+## 💬 Example: Multi-turn Chat (Conversation History)
 
 Use this pattern when you want the model to remember previous turns in the conversation:
 
@@ -117,7 +133,7 @@ messages = [
     {"role": "user", "content": "Write the beginning of a fantasy story."},
 ]
 
-client = OpenAI(base_url="http://localhost:11434/v1", api_key="flm")
+client = OpenAI(base_url="http://localhost:52625/v1", api_key="flm")
 response = client.chat.completions.create(model="llama3.2:1b", messages=messages)
 print(response.choices[0].message.content)
 
@@ -134,19 +150,15 @@ import gc
 gc.collect()
 ```
 
-> ⚠️ The OpenAI API (and FastFlowLM server mode) is **stateless** — you must resend the full conversation each time. No KV cache is kept between turns.
-
-> 🌀 This means all previous messages are reprocessed (**prefill**), which adds latency for long chats.
-
-> ⚡ **FastFlowLM’s CLI mode** uses a **real KV cache**, making multi-turn responses much faster — especially with long conversations.
-
-> 🧠 FastFlowLM is optimized for **long sequences** with large KV caches, ideal for 32k–128k context windows.
-
-> 🔧 We’re working on adding **stateful KV cache** to server mode. Stay tuned!
+> ⚠️ The OpenAI API (and FastFlowLM server mode) is **stateless** — you must resend the full conversation each time. No KV cache is kept between turns.  
+> 🌀 This means all previous messages are reprocessed (**prefill**), which adds latency for long chats.  
+> ⚡ **FastFlowLM’s CLI mode** uses a **real KV cache**, making multi-turn responses much faster — especially with long conversations.  
+> 🧠 FastFlowLM is optimized for **long sequences** with large KV caches, ideal for 32k–256k context windows.  
+<!-- > 🔧 We’re working on adding **stateful KV cache** to server mode. Stay tuned!   -->
 
 ---
 
-### 🔁 Example: Streamed Output (Real-Time Response)
+## 🔁 Example: Streamed Output (Real-Time Response)
 
 Display the model’s output as it generates, token-by-token:
 
@@ -155,7 +167,7 @@ Display the model’s output as it generates, token-by-token:
 from openai import OpenAI
 import gc, sys
 
-client = OpenAI(base_url="http://localhost:11434/v1/", api_key="flm")
+client = OpenAI(base_url="http://localhost:52625/v1/", api_key="flm")
 
 stream = client.chat.completions.create(
     model="llama3.2:1b",
@@ -183,7 +195,7 @@ gc.collect()
 
 ---
 
-### 📄 Example: Use a File as the Prompt
+## 📄 Example: Use a File as the Prompt
 
 You can load a full `.txt` file as a prompt — useful for long documents or testing large context windows.
 
@@ -198,7 +210,7 @@ from openai import OpenAI
 with open("C:\\Users\\<username>\\Downloads\\alice_in_wonderland.txt", "r", encoding="utf-8") as f:
     user_prompt = f.read()
 
-client = OpenAI(base_url="http://localhost:11434/v1", api_key="flm")
+client = OpenAI(base_url="http://localhost:52625/v1", api_key="flm")
 
 response = client.chat.completions.create(
     model="llama3.2:1b",
@@ -218,7 +230,7 @@ gc.collect()
 
 ---
 
-### 📊 Example: Batch Requests (Multiple Prompts)
+## 📊 Example: Batch Requests (Multiple Prompts)
 
 Loop over a list of prompts and generate answers — useful for eval or bulk testing.
 
@@ -232,7 +244,7 @@ prompts = [
     "What are the key themes in ‘To Kill a Mockingbird’?",
 ]
 
-client = OpenAI(base_url="http://localhost:11434/v1", api_key="flm")
+client = OpenAI(base_url="http://localhost:52625/v1", api_key="flm")
 
 for prompt in prompts:
     response = client.chat.completions.create(
@@ -252,7 +264,7 @@ gc.collect()
 
 ---
 
-### 🧬 Example: Use Temperature, Top-p, and Presence Penalty
+## 🧬 Example: Use Temperature, Top-p, and Presence Penalty
 
 Control randomness and creativity — for brainstorming or open-ended tasks.
 
@@ -260,7 +272,7 @@ Control randomness and creativity — for brainstorming or open-ended tasks.
 # Change hyper parameters
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:11434/v1", api_key="flm")
+client = OpenAI(base_url="http://localhost:52625/v1", api_key="flm")
 
 response = client.chat.completions.create(
     model="llama3.2:1b",
@@ -273,6 +285,55 @@ response = client.chat.completions.create(
     presence_penalty=0.5, # Encourage novelty
 )
 
+print(response.choices[0].message.content)
+
+# cleanup
+del response, client
+import gc
+gc.collect()
+```
+
+---
+
+## 📷 Example: Multi-Image Input
+
+Send multiple images together with a text prompt.  
+The model will analyze them, compare, and respond with reasoning.
+
+```python
+import base64
+from openai import OpenAI
+
+# Paths to your local images
+image_path_0 = r"C:\Users\info\OneDrive\Desktop\FLM\image_test\image0.jpg"
+image_path_1 = r"C:\Users\info\OneDrive\Desktop\FLM\image_test\image1.png"
+
+# Read and encode the images as Base64 strings (required for API input)
+with open(image_path_0, "rb") as image_file:
+    image_0 = base64.b64encode(image_file.read()).decode("utf-8")
+with open(image_path_1, "rb") as image_file:
+    image_1 = base64.b64encode(image_file.read()).decode("utf-8")
+
+# Connect to your local FLM/OpenAI-compatible endpoint
+client = OpenAI(base_url="http://localhost:52625/v1", api_key="dummykey")
+
+# Create a chat completion request with text + two images
+response = client.chat.completions.create(
+    model="gemma3:4b",  # Vision-capable model
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Describe the images. Which one you like better and why?"},
+                
+                {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{image_0}"}}, # standard OpenAI-compatible API
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_1}"}}, 
+            ],
+        }
+    ],
+)
+
+# Print the model's answer
 print(response.choices[0].message.content)
 
 # cleanup

@@ -5,187 +5,110 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img src="https://img.shields.io/badge/NPU-Optimized-red" />
 </p>
 
-Run large language models on AMD Ryzen™ AI NPUs — in minutes.
+## ⚡ FastFlowLM (FLM) — Unlock Ryzen™ AI NPUs
 
-FastFlowLM is a lightweight runtime for deploying LLMs like LLaMA, Qwen and DeepSeek directly on AMD’s NPU — no GPU needed, faster and over 11x more power efficient than the iGPU or hybrid (iGPU+NPU) solutions.
+Run large language models — now with **Vision**, **Audio** and **MoE** support — on **AMD Ryzen™ AI NPUs** in minutes.  
+**No GPU required. Faster and over 10× more power-efficient. Supports context lengths up to 256k tokens. Ultra-Lightweight (16 MB). Installs within 20 seconds.**
 
-FastFlowLM supports full context lengths — up to 128K tokens with LLaMA 3.1 and 3.2.
+📦 **The only out-of-box, NPU-first runtime built exclusively for Ryzen™ AI.**  
+🤝 **Think Ollama — but deeply optimized for NPUs.**  
+✨ **From Idle Silicon to Instant Power — FastFlowLM Makes Ryzen™ AI Shine.**
 
-**Just like Ollama — but purpose-built and deeply optimized for the Ryzen™ NPU**
-
-> FastFlowLM supports all Ryzen™ AI Series chips with XDNA2 NPUs (Strix, Strix Halo, and Kraken).
-
-For full installation instructions, usage examples, and developer guides, please visit:  
-👉 [docs.fastflowlm.com](https://docs.fastflowlm.com/)
+> FastFlowLM (FLM) supports all Ryzen™ AI Series chips with XDNA2 NPUs (Strix, Strix Halo, and Kraken).
 
 ---
 
-## 📺 Demo Videos
+## 🔗 Quick Links
 
-FastFlowLM vs AMD’s official stack (Ryzen AI software 1.4) — **real-time speedup and power efficiency**: 
+  🔽 **[Download](https://github.com/FastFlowLM/FastFlowLM/releases/latest/download/flm-setup.exe)** | 📊 **[Benchmarks](https://docs.fastflowlm.com/benchmarks/)** | 📦 **[Model List](https://docs.fastflowlm.com/models/)**  
 
-- Same prompt (length: 1835 tokens), same model (LLaMA 3.2 1B model; weights int4; activation bf16), running on the same machine (AMD Ryzen AI 5 340 NPU with 32 GB SO-DIMM DDR5 5600 MHz memory)
-- Real-time CPU, iGPU, NPU usage, and power consumption shown (Windows task manager + HWINFO)
 
-<table>
-  <tr>
-    <td valign="top">
-      <h4>🔹 FastFlowLM vs Ryzen AI SW 1.4 (NPU-only)</h4>
-      <a href="https://youtu.be/kv31FZ_q0_I?list=PLf87s9UUZrJp4r3JM4NliPEsYuJNNqFAJ">
-        <img src="https://img.youtube.com/vi/kv31FZ_q0_I/0.jpg" alt="Demo: FastFlowLM vs OGA" width="320">
-      </a>
-    </td>
-    <td valign="top">
-      <h4>🔹 FastFlowLM vs Ryzen AI SW 1.4 (Hybrid)</h4>
-      <a href="https://youtu.be/PFjH-L_Kr0w?list=PLf87s9UUZrJp4r3JM4NliPEsYuJNNqFAJ">
-        <img src="https://img.youtube.com/vi/PFjH-L_Kr0w/0.jpg" alt="Demo: FastFlowLM vs GAIA" width="320">
-      </a>
-    </td>
-  </tr>
-</table>
-
-🎥 More demo videos (e.g., the new think/no_think qwen3 model, 4 power mode operation, etc.) and comparisons with Ollama, LM Studio, Lemonade, etc. can be found [here on YouTube](https://www.youtube.com/watch?v=OZuLQcmFe9A&list=PLf87s9UUZrJp4r3JM4NliPEsYuJNNqFAJ).
+  📖 **[Docs](https://docs.fastflowlm.com)** | 📺 **[Demos](https://www.youtube.com/@FastFlowLM-YT/playlists)** | 🧪 **[Test Drive](https://docs.fastflowlm.com/#-test-drive-remote-demo)** | 💬 **[Discord](https://discord.gg/z24t23HsHF)** 
 
 ---
 
-## 🧪 Test Drive (Remote Demo)
+## 🚀 Quick Start
 
-🚀 Skip the setup — experience FastFlowLM instantly on a live AMD Ryzen™ AI 5 340 NPU with 32 GB memory ([spec](https://www.amazon.com/4X4-BOX-AI340-Display-Support-Copilot/dp/B0F2GFLF67/ref=sr_1_5?crid=1X16RDUCQ2497&dib=eyJ2IjoiMSJ9.C5GS4xMl_kkJ7Yr6dNFi6g.Dfj_l9Dk1yuIBjppqmKSqNAAPQc1F4Mu3zJ9-MDlszw&dib_tag=se&keywords=4x4+box+ai340&qid=1752010554&sprefix=www.amazon.com%2F4X4-BOX-AI340%2Caps%2C176&sr=8-5)):
+A packaged FLM Windows installer is available here: [**flm-setup.exe**](https://github.com/FastFlowLM/FastFlowLM/releases/latest/download/flm-setup.exe). For more details, see the [release notes](https://github.com/FastFlowLM/FastFlowLM/releases/).
 
-🌐 **Launch Now**: [https://open-webui.testdrive-fastflowlm.com/](https://open-webui.testdrive-fastflowlm.com/)  
-🔐 **Login**: `guest@flm.npu`  
-🔑 **Password**: `0000`
+📺 [**Watch the quick start video**](https://www.youtube.com/watch?v=mYOfDNkyBII)
 
-> Alternatively, **sign up** with your own credentials instead of using the shared guest account.
-> ⚠️ Some universities or companies may **block access** to the test drive site. If it doesn't load over Wi-Fi, try switching to a **cellular network**.  
-> Real-time demo powered by **FastFlowLM + Open WebUI** — no downloads, no installs.  
-> Try optimized LLM models: `llama3.2:1b`, `llama3.2:3b`, `qwen3:4b`, etc. — all accelerated on NPU.
+> ⚠️ Ensure NPU driver veriosn is **> 32.0.203.258** (check via Task Manager→Performance→NPU or Device Manager) — [Driver Download](https://www.amd.com/en/support).  
+> ⚙️ **Tip:** Upgrade to the new NPU Driver **32.0.203.304** for over 5–10% speed boost across all models and context lengths. [Download and Install](https://ryzenai.docs.amd.com/en/latest/inst.html#install-npu-drivers) *(AMD account required)*  
 
-⚠️ **Please note**:  
-- FastFlowLM is designed for **single-user local use**. This remote demo machine may experience short wait times when **multiple users** access it concurrently — please be patient.
-- When switching models, it may take longer time to replace the model in memory.
-- Large prompts (30k+ tokens) may take longer — but it works.
-
----
-
-## ⚡ Quick Start
-
-A packaged Windows installer is available here: [**flm-setup.exe**](https://github.com/FastFlowLM/FastFlowLM/releases/download/v0.9.0/flm-setup-v0.9.0.exe). For more details, see the [release notes](https://github.com/FastFlowLM/FastFlowLM/releases/).
-
-> ⚠️ Ensure NPU driver is **32.0.203.258** or later (check via Task Manager→Performance→NPU or Device Manager) — [Driver Download](https://www.amd.com/en/support).
-
-After installation, open **PowerShell**. To run a model in terminal (CLI or Interactive Mode):
-```
+After installation, open **PowerShell** (`Win + X → I`). To run a model in terminal (**CLI Mode**):
+```powershell
 flm run llama3.2:1b
 ```
-> Requires internet access to HuggingFace to pull (download) the optimized model kernel. The model will be downloaded to the folder: ``C:\Users\<USER>\Documents\flm\models\``. ⚠️ If HuggingFace is not directly accessible in your region, you can manually download the model and place it in this directory.
+> **Notes:**
+> - Internet access to HuggingFace is required to download the optimized model kernels.
+> - Sometimes downloads from HuggingFace may get corrupted. If this happens, run `flm pull <model_tag> --force` (e.g. `flm pull llama3.2:1b --force`) to re-download and fix them.
+> - By default, models are stored in: `C:\Users\<USER>\Documents\flm\models\`  
+> - During installation, you can select a different base folder (e.g., if you choose `C:\Users\<USER>\flm`, models will be saved under `C:\Users\<USER>\flm\models\`).  
+> - ⚠️ If HuggingFace is not accessible in your region, manually download the model ([check this issue](https://github.com/FastFlowLM/FastFlowLM/issues/2)) and place it in the chosen directory.   
 
-To start the local REST API server (Server Mode):
-```
+🎉🚀 FastFlowLM (FLM) is ready — your NPU is unlocked and you can start chatting with models right away!
+
+Open **Task Manager** (`Ctrl + Shift + Esc`). Go to the **Performance** tab → click **NPU** to monitor usage.  
+
+> **⚡ Quick Tips:**  
+> - Use `/verbose` during a session to turn on performance reporting (toggle off with `/verbose` again).   
+> - Type `/bye` to exit a conversation.  
+> - Run `flm list` in PowerShell to show all available models.  
+
+To start the local server (**Server Mode**):
+```powershell
 flm serve llama3.2:1b
 ```
-> The model tag (e.g., `llama3.2:1b`) sets the initial model, which is optional. If another model is requested, FastFlowLM will automatically switch to it. Local server is on port 11434 (default).
+> The model tag (e.g., `llama3.2:1b`) sets the initial model, which is optional. If another model is requested, FastFlowLM will automatically switch to it. Local server is on port 52625 (default).  
 
-For best performance, it is recommended to set the NPU power mode to **performance** or **turbo**. Open **PowerShell** and change path to:
-```powershell
-cd C:\Windows\System32\AMD\
-```
-Then, run
-```powershell
-.\xrt-smi configure --pmode turbo
-```
-> For more details about NPU power mode, refer to the [AMD XRT SMI Documentation](https://ryzenai.docs.amd.com/en/latest/xrt_smi.html).
-
-For detailed instructions and video guides, click [Documentation](https://docs.fastflowlm.com/).
+**[![FastFlowLM Docs](https://img.shields.io/badge/FastFlowLM-Detailed%20Instructions-red?style=flat&logo=readthedocs)](https://docs.fastflowlm.com/instructions/)**
 
 ---
 
-## 🧠 Local AI on Your NPU
+## 📰 In the News
 
-FastFlowLM makes it easy to run modern LLMs locally with:
+- 10/01/2025 🎉 FLM was integrated into AMD's **[Lemonade Server](https://lemonade-server.ai/)** 🍋. Watch this **[short demo](https://www.youtube.com/watch?v=w0Tb3h4WUnE)** about using FLM in Lemonade.
+
+---
+
+## 🧠 Local AI on NPU
+
+FLM makes it easy to run cutting-edge **LLMs** (and now **VLMs**) locally with:
 - ⚡ Fast and low power
-- 🧰 Simple CLI and API
+- 🧰 Simple CLI and API (REST and OpenAI API)
 - 🔐 Fully private and offline
 
 No model rewrites, no tuning — it just works.
 
 ---
 
-## ✅ Features
+## ✅ Highlights
 
-- **Runs fully on AMD Ryzen™ NPU** — no GPU or CPU load  
+- **Runs fully on AMD Ryzen™ AI NPU** — no GPU or CPU load
+- **Lightweight runtime (16 MB)** — installs within **20 seconds**, easy to integrate    
 - **Developer-first flow** — like Ollama, but optimized for NPU  
-- **Support for long context windows** — up to 128k tokens (e.g., LLaMA 3.1/3.2)  
+- **Support for long context windows** — up to 256k tokens (e.g., Qwen3-4B-Thinking-2507)  
 - **No low-level tuning required** — You focus on your app, we handle the rest
 
 ---
 
-## ⚡ Performance
+## 📄 License
 
-Compared to AMD Ryzen™ AI Software 1.4 (GAIA or Lemonade):
-
-### LLM Decoding Speed (TPS: Tokens per Second)
-- 🚀 Up to **14.2× faster** vs NPU-only baseline  
-- 🚀 Up to **16.2× faster** vs hybrid iGPU+NPU baseline
-
-### Power Efficiency
-- 🔋 Up to **2.66× more efficient in decoding** vs NPU-only  
-- 🔋 Up to **11.38× more efficient in decoding** vs hybrid  
-- 🔋 Up to **3.4× more efficient in prefill** vs NPU-only or hybrid
-
-### Latency
-- ⏱️ **Matches or exceeds** TTFT (Time to First Token) of NPU-only or hybrid mode
-
-### Benchmarks
-<p style="font-size:85%; margin:0;">
-📊 View the detailed results here:
-<a href="https://docs.fastflowlm.com/benchmarks/" style="text-decoration:none;">
-<strong>[Benchmark results]</strong>
-</a>
-</p>
+- All orchestration code and CLI tools are open-source under the [MIT License](./LICENSE_RUNTIME.txt).
+- NPU-accelerated kernels are **proprietary binaries**, free for **non-commercial use** only — see [LICENSE_BINARY.txt](./LICENSE_BINARY.txt) and [TERMS.md](./TERMS.md) for details.
+- **Non-commercial users:** Please acknowledge FastFlowLM in your README/project page:
+  ```
+  Powered by [FastFlowLM](https://github.com/FastFlowLM/FastFlowLM)
+  ```
+For commercial use or licensing inquiries, email us: info@fastflowlm.com
 
 ---
 
-## 🛠️ Instructions
-
-[Documentation and example workflows](https://docs.fastflowlm.com/). Like Ollama, you can:
-- Load and run models locally via CLI (Interactive Mode)
-- Integrate into your app via a simple REST API via a local server (Server Mode)
-> Compatible with tools like **Microsoft AI Toolkit**, **Open WebUI**, and more.
-
----
-
-## 🔒 Proprietary Kernel Optimizations
-
-FastFlowLM uses **proprietary low-level kernel code** optimized for AMD Ryzen™ NPUs.  
-> These kernels are **not open source**, but are included as binaries for seamless integration.
-
-The rest of the stack — CLI, model runner, orchestration — is open and developer-friendly.
-
----
-
-## 📝 Licensing & Contact
-
-- 🆓 **Deep-optimized FastFlowLM kernels** are **free for non-commercial use**  
-- 💼 **Interested in commercial use?** Email us at [info@fastflowlm.com](mailto:info@fastflowlm.com)  
-- 📦 **Want to bring your own model?** We can optimize it for FastFlowLM — just reach out!
-
----
-
-## License
-
-This repository contains two types of components:
-
-- **Open-source components** (e.g., CLI, orchestration code) are released under the **MIT License**.
-- **Proprietary binaries** (used for low-level NPU acceleration; patent pending) are **not included** in this repository and are covered by **separate licensing terms**.
-
----
-
-💬 **Have feedback or want early access? [Open an issue](https://github.com/fastflowlm/fastflowlm/issues/new) or reach out!**
+💬 Have **feedback/issues** or want **early access** to our new releases? [Open an issue](https://github.com/fastflowlm/fastflowlm/issues/new) or [Join our Discord community](https://discord.gg/z24t23HsHF)
 
 ---
 
@@ -195,4 +118,4 @@ This repository contains two types of components:
 - Inspired by the widely adopted [Ollama](https://github.com/ollama/ollama)
 - Tokenization accelerated with [MLC-ai/tokenizers-cpp](https://github.com/mlc-ai/tokenizers-cpp)
 - Chat formatting via [Google/minja](https://github.com/google/minja)
-- Low-level kernels optimized using the powerful [IRON](https://github.com/Xilinx/mlir-aie/tree/main/programming_guide)+[Riallto](https://riallto.ai/)+[AIE-MLIR](https://github.com/Xilinx/mlir-aie/tree/main/mlir_tutorials)
+- Low-level kernels optimized using the powerful [IRON](https://github.com/Xilinx/mlir-aie/tree/main/programming_guide)+[AIE-MLIR](https://github.com/Xilinx/mlir-aie/tree/main)
