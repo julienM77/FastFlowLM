@@ -45,7 +45,7 @@ Enter **Name**, **Email**, and **Password** to create a local account.
    - **API Key:** `DUMMY` (any non-empty value)
 4. Click **Save**.
 
-> ⚠️ Diable `Title Generation`, `Follow Up Generation`, `Tags Generation`, `Retrieval Query Generation`, and `Web Search Query Generation` under **Settings->Interface** for best performance. 
+> ⚠️ Disable `Title Generation`, `Follow Up Generation`, `Tags Generation`, `Retrieval Query Generation`, and `Web Search Query Generation` under **Settings->Interface** for best performance. 
 
 ---
 
