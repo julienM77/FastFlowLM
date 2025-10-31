@@ -1,55 +1,36 @@
 FastFlowLM Proprietary Binary License Agreement
-Version 1.0 – July 2025
+Version 2.0 – November 2025
 
 IMPORTANT: READ CAREFULLY BEFORE USING THESE BINARIES.
+By installing, copying, or using the binary components provided with this software distribution (the “Binaries”), you agree to be bound by the terms of this License Agreement. If you do not agree to these terms, do not use or distribute the Binaries.
 
-By installing, copying, or using the binary components provided with this software distribution (the "Binaries"), you agree to be bound by the terms of this License Agreement. If you do not agree to these terms, do not use or distribute the Binaries.
+LICENSE GRANT
+FastFlowLM Inc. (“Licensor”) hereby grants you a limited, non-exclusive, non-transferable, royalty-free license to use the Binaries for non-commercial, research, academic, or personal purposes. Commercial use is permitted under the conditions set forth in Section 3 (Commercial Use & Revenue Threshold).
 
-1. LICENSE GRANT (NON-COMMERCIAL USE ONLY)
-FastFlowLM Inc. ("Licensor") hereby grants you a limited, non-exclusive, non-transferable, royalty-free license to use the Binaries **solely for non-commercial, research, academic, or personal purposes**.
-
-2. RESTRICTIONS
-
+RESTRICTIONS
 You may NOT:
-a. Use the Binaries for any commercial purpose without a separate commercial license.
+a. Use the Binaries for any commercial purpose unless you meet the conditions in Section 3 and have obtained a commercial license.
 b. Modify, reverse-engineer, disassemble, or decompile the Binaries.
 c. Redistribute the Binaries as part of any commercial software or service.
 d. Remove or obscure any copyright, trademark, or patent notices.
 
-3. COMMERCIAL USE
+COMMERCIAL USE & REVENUE THRESHOLD
+You’re free to use the Binaries for commercial purposes until your company’s annual revenue exceeds USD 10 million. Once your company’s annual revenue exceeds USD 10 million, you must obtain a commercial license from the Licensor to continue use.
+To request a commercial license, contact: info@fastflowlm.com
 
-To use the Binaries for any commercial purpose, including but not limited to:
-- Internal use at a for-profit company,
-- Deployment in SaaS or embedded systems,
-- Inclusion in a commercial product or service,
+INTELLECTUAL PROPERTY
+The Binaries are protected by copyright and by one or more pending patents. You acknowledge that the Binaries and associated intellectual property are owned by FastFlowLM Inc. and are not licensed under the open-source MIT license used in other parts of this repository.
 
-you must obtain a separate commercial license from the Licensor.
+DISCLAIMER OF WARRANTY
+THE BINARIES ARE PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
-To request a commercial license, contact:  
-📧 info@fastflowlm.com
+LIMITATION OF LIABILITY
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY DAMAGES (INCLUDING BUT NOT LIMITED TO LOST PROFITS, BUSINESS INTERRUPTION, OR LOSS OF DATA) ARISING OUT OF THE USE OR INABILITY TO USE THE Binaries, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
-4. INTELLECTUAL PROPERTY
-
-The Binaries are protected by copyright and by one or more pending patents.  
-You acknowledge that the Binaries and associated intellectual property are owned by FastFlowLM Inc. and are not licensed under the open-source MIT license used in other parts of this repository.
-
-5. DISCLAIMER OF WARRANTY
-
-THE BINARIES ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.  
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-
-6. LIMITATION OF LIABILITY
-
-IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY DAMAGES (INCLUDING BUT NOT LIMITED TO LOST PROFITS, BUSINESS INTERRUPTION, OR LOSS OF DATA) ARISING OUT OF THE USE OR INABILITY TO USE THE BINARIES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
-
-7. TERMINATION
-
+TERMINATION
 This license is effective until terminated. It will terminate automatically without notice if you fail to comply with any term herein. Upon termination, you must destroy all copies of the Binaries.
 
-8. GOVERNING LAW
-
+GOVERNING LAW
 This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, United States, without regard to conflict of laws principles.
-
----
 
 © 2025 FastFlowLM Inc. All rights reserved.
