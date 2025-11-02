@@ -14,7 +14,7 @@ has_children: false
 
 ---
 
-## 🚨 CRITICAL: NPU Driver Requirpement
+## 🚨 CRITICAL: NPU Driver Requirement
 
 You must have AMD NPU driver **version number > 32.0.203.258** installed for FastFlowLM to work correctly.
 
