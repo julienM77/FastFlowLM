@@ -35,3 +35,16 @@ This section reports the performance of Qwen 3 on NPU with FastFlowLM (FLM).
 | **Qwen 3 1.7B**  | NPU (FLM)    | 939 |	1029 |	916 |	674 |	408 |	225|**Qwen 3 1.7B**  |
 | **Qwen 3 4B**    | NPU (FLM)    | 509 |	574 |	543 |	435 |	282 |	164|**Qwen 3 4B**    | 
 | **Qwen 3 8B**    | NPU (FLM)    | 357 |	420 |	408 |	345 |	243 |	150|**Qwen 3 8B**    |
+
+---
+
+### 🚀 Prefill TTFT with Image Input (seconds)
+
+Prefill time-to-first-token (TTFT) for Qwen3-VL-4B on NPU (FastFlowLM) with different image resolutions.
+
+| Model        | Hardware  | 720p (1280×720) | 1080p (1920×1080) | 2K (2560×1440) | 4K (3840×2160) |
+|--------------|-----------|----------------:|------------------:|---------------:|---------------:|
+| Qwen3-VL-4B  | NPU (FLM) |            3.5 |               9.1 |           21.0 |             84.7 |
+
+
+> This test uses a short prompt: “Describe this image.”

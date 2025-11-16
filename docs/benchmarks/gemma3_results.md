@@ -36,7 +36,7 @@ This section reports the performance on NPU with FastFlowLM (FLM).
 | **Gemma 3 4B**   | NPU (FLM)    | 528 |	654 |	738 |	754 |	739 |	673|**Gemma 3 4B**  |
 
 
-### 🚀 Prefill TTFT with image
+### 🚀 Prefill TTFT with image (Seconds)
 
 | **Model**        | **Hardware**       | **Image** |
 |------------------|--------------------|--------:|

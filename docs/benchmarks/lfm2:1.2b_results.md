@@ -1,5 +1,5 @@
 ---
-title: LiquidAI/LFM
+title: LiquidAI/LFM2
 parent: Benchmarks
 nav_order: 5
 ---
