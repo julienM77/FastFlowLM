@@ -8,6 +8,19 @@ layout: default
       <div class="docs-sidebar__header">
         <p class="kicker">Docs</p>
         <h1 class="headline-sm">{{ page.title | default: "Documentation" }}</h1>
+        <div class="docs-search">
+          <label class="visually-hidden" for="docs-search-input">Search docs</label>
+          <input
+            id="docs-search-input"
+            type="search"
+            placeholder="Search docs"
+            autocomplete="off"
+            spellcheck="false"
+            class="docs-search__input"
+            data-docs-search-input
+          />
+          <div class="docs-search__results" data-docs-search-results aria-label="Search results"></div>
+        </div>
       </div>
       <nav class="docs-nav">
         {% for entry in site.docs_nav %}

@@ -267,5 +267,155 @@
 
     update();
   });
+
+  // Docs search (only active on docs layout)
+  const docsSearchInput = document.querySelector("[data-docs-search-input]");
+  const docsSearchResults = document.querySelector("[data-docs-search-results]");
+
+  if (docsSearchInput && docsSearchResults) {
+    let docsIndex = [];
+    let indexLoaded = false;
+    let indexLoading = false;
+
+    const hideResults = () => {
+      docsSearchResults.classList.remove("is-visible");
+      docsSearchResults.innerHTML = "";
+    };
+
+    const renderResults = (results, query) => {
+      docsSearchResults.innerHTML = "";
+
+      if (!query || query.length < 2) {
+        hideResults();
+        return;
+      }
+
+      if (!results || results.length === 0) {
+        docsSearchResults.innerHTML =
+          '<div class="docs-search__empty">No matches found.</div>';
+        docsSearchResults.classList.add("is-visible");
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      results.forEach((page) => {
+        const item = document.createElement("a");
+        item.className = "docs-search__item";
+        item.href = page.url;
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "docs-search__item-title";
+        titleEl.textContent = page.title;
+
+        const snippetEl = document.createElement("div");
+        snippetEl.className = "docs-search__item-snippet";
+
+        const content = page.content || "";
+        const lower = content.toLowerCase();
+        const idx = lower.indexOf(query.toLowerCase());
+
+        if (idx !== -1) {
+          const start = Math.max(0, idx - 40);
+          const end = Math.min(content.length, idx + query.length + 60);
+          let snippet = content.slice(start, end).trim();
+          if (start > 0) snippet = "…" + snippet;
+          if (end < content.length) snippet = snippet + "…";
+          snippetEl.textContent = snippet;
+        } else {
+          snippetEl.textContent = content.slice(0, 120).trim() + "…";
+        }
+
+        item.appendChild(titleEl);
+        item.appendChild(snippetEl);
+        fragment.appendChild(item);
+      });
+
+      docsSearchResults.appendChild(fragment);
+      docsSearchResults.classList.add("is-visible");
+    };
+
+    const loadIndex = async () => {
+      if (indexLoaded || indexLoading) return;
+      indexLoading = true;
+      try {
+        const response = await fetch("/search.json", { cache: "no-store" });
+        if (response.ok) {
+          docsIndex = await response.json();
+          indexLoaded = true;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load docs search index", e);
+      } finally {
+        indexLoading = false;
+      }
+    };
+
+    const performSearch = async (query) => {
+      const q = query.trim().toLowerCase();
+
+      if (!q || q.length < 2) {
+        hideResults();
+        return;
+      }
+
+      await loadIndex();
+
+      if (!docsIndex || docsIndex.length === 0) {
+        hideResults();
+        return;
+      }
+
+      const matches = docsIndex
+        .map((page) => {
+          const title = (page.title || "").toString();
+          const content = (page.content || "").toString();
+          const haystack = (title + " " + content).toLowerCase();
+          const score = haystack.indexOf(q);
+          return score === -1 ? null : { page, score };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 10)
+        .map((entry) => entry.page);
+
+      renderResults(matches, q);
+    };
+
+    let searchDebounce = null;
+
+    docsSearchInput.addEventListener("input", (event) => {
+      const value = event.target.value || "";
+      if (searchDebounce) {
+        window.clearTimeout(searchDebounce);
+      }
+      searchDebounce = window.setTimeout(() => {
+        performSearch(value);
+      }, 120);
+    });
+
+    docsSearchInput.addEventListener("focus", () => {
+      if (docsSearchInput.value && docsSearchInput.value.length >= 2) {
+        performSearch(docsSearchInput.value);
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        !docsSearchResults.contains(event.target) &&
+        event.target !== docsSearchInput
+      ) {
+        hideResults();
+      }
+    });
+
+    docsSearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        docsSearchInput.blur();
+        hideResults();
+      }
+    });
+  }
 })();
 
