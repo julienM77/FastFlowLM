@@ -86,9 +86,9 @@ docs_nav:
         url: "/docs/instructions/server/openapi/"
       - label: Open WebUI
         url: "/docs/instructions/server/webui/"
-      - label: RAG + LangChain
+      - label: LangChain RAG
         url: "/docs/instructions/server/rag_LangChain/"
-      - label: Web Search + LangChain
+      - label: LangChain Web Search
         url: "/docs/instructions/server/websearch_LangChain/"
       - label: Obsidian
         url: "/docs/instructions/server/obsidian/"  

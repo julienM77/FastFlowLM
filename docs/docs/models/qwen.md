@@ -82,7 +82,7 @@ flm run qwen3:4b
 - **Quantization:** Q4_1
 - **Max Context Length:** 32k tokens  
 - **Default Context Length:** 16k tokens ([change default](https://fastflowlm.com/docs/instructions/cli/#-change-default-context-length-max))  
-- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/️#-set-context-length-at-launch)**
+- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/#-set-context-length-at-launch)**
 
 ▶️ Run with FastFlowLM in PowerShell:  
 
@@ -105,7 +105,7 @@ flm run qwen3:8b
 - **Quantization:** Q4_1
 - **Max Context Length:** 256k tokens  
 - **Default Context Length:** 32k tokens ([change default](https://fastflowlm.com/docs/instructions/cli/#-change-default-context-length-max))  
-- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/️#-set-context-length-at-launch)**
+- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/#-set-context-length-at-launch)**
 
 ▶️ Run with FastFlowLM in PowerShell:  
 

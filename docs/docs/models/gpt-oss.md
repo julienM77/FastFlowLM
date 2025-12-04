@@ -45,7 +45,7 @@ flm run gpt-oss:20b
 - **Quantization:** Q4_1
 - **Max Context Length:** 128k tokens 
 - **Default Context Length:** 8192 tokens ([change default](https://fastflowlm.com/docs/instructions/cli/#-change-default-context-length-max))  
-- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/️#-set-context-length-at-launch)**
+- **[Set Context Length at Launch](https://fastflowlm.com/docs/instructions/cli/#-set-context-length-at-launch)**
 
 ▶️ Run with FastFlowLM in PowerShell:  
 
