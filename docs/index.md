@@ -19,11 +19,11 @@ sections:
         href: "https://github.com/FastFlowLM/FastFlowLM"
         style: ghost
         external: true
-      - label: "Benchmarks"
-        href: "/benchmarks/"
-        style: ghost
       - label: "Models"
         href: "/models/"
+        style: ghost
+      - label: "Benchmarks"
+        href: "/benchmarks/"
         style: ghost
       - label: "Demos"
         href: "/demos/"
@@ -31,6 +31,10 @@ sections:
       - label: "Test Drive"
         href: "/test-drive/"
         style: ghost
+      - label: "Discord"
+        href: "https://discord.gg/z24t23HsHF?utm_source=site"
+        style: ghost
+        external: true
     stats:
       - label: "Runtime size"
         value: "~16 MB"
