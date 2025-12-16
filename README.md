@@ -37,7 +37,7 @@ A packaged FLM Windows installer is available here: [**flm-setup.exe**](https://
 📺 [**Watch the quick start video**](https://www.youtube.com/watch?v=mYOfDNkyBII)
 
 > [!IMPORTANT]  
-> ⚠️ Ensure NPU driver verison is **>= 32.0.203.311** (check via Task Manager→Performance→NPU or Device Manager).  
+> ⚠️ Ensure NPU driver verison is **>= 32.0.203.304** (`.304` is the minimum requirement but `.311` is recommended; check via Task Manager→Performance→NPU or Device Manager).  
 > ⚙️ **Tip:**
 >   * **RECOMMENDED**: Try running **Windows Update** or **[Driver Download](https://www.amd.com/en/support)**.
 >   * **[Official AMD Install Doc](https://ryzenai.docs.amd.com/en/latest/inst.html#install-npu-drivers)** *(AMD account required)*.
