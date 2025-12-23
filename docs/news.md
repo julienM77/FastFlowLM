@@ -46,7 +46,7 @@ sections:
 
       NPU is now a powerhouse that runs real AI, right on your device, without stealing power from everything else.
 
-      And **FastFlowLM is the runtime software engine mading it happen**. 
+      And **FastFlowLM is the runtime software engine making it happen**. 
 
       It optimizes large language models (LLMs) to run entirely on NPUs, extracting massive speed, efficiency, and capability from the hardware you already own.
 
