@@ -9,6 +9,7 @@ parent: Models
 
 - **Type:** Text-to-Text
 - **Think:** No
+- **Tool Calling Support:** No
 - **Base Model:** [microsoft/Phi-4-mini-instruct](https://huggingface.co/microsoft/Phi-4-mini-instruct)
 - **Quantization:** Q4_1
 - **Max Context Length:** 128k tokens 
