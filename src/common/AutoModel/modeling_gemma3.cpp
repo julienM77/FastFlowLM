@@ -43,7 +43,7 @@ void Gemma3::setup_tokenizer(std::string model_path) {
     auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
 }
 
-std::string Gemma3::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Gemma3::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;

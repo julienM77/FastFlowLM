@@ -18,14 +18,34 @@ private:
     std::string role = "developer";
 
     void setup_tokenizer(std::string model_path);
+
+    enum ToolGrammarState {
+        STATE_EXPECT_TO_FUNCTIONS,
+        STATE_EXPECT_FUNCTION_NAME,
+        STATE_EXPECT_CONSTRAIN,
+        STATE_EXPECT_MESSAGE,
+        STATE_COMPLETE
+    };
+    ToolGrammarState current_state = STATE_EXPECT_TO_FUNCTIONS;
+    std::string accumulated_text;
+    void reset_tool_grammar_state() {
+        current_state = STATE_EXPECT_TO_FUNCTIONS;
+        accumulated_text.clear();
+    }
 public:
     GPT_OSS(xrt::device* npu_device_inst);
 
     void load_model(std::string model_path, json model_info, int default_context_length = -1, bool enable_preemption = false) override;
-    std::string apply_chat_template(nlohmann::ordered_json& messages) override;
+    std::string apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools = nlohmann::ordered_json::object()) override;
     bool insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) override;
     std::string generate(chat_meta_info_t& meta_info, int length_limit, std::ostream& os, std::function<bool()> is_cancelled = [] { return false; }) override;
     std::string generate_with_prompt(chat_meta_info_t& meta_info, lm_uniform_input_t& input, int length_limit, std::ostream& os = std::cout) override;
+    int _sample_in_tool(buffer<bf16>& logits);
+    std::vector<int> get_to_functions_tokens();
+    std::vector<int> get_function_name_tokens();
+    void update_state(int token_id);
+    void mask_logits(buffer<bf16>& logits, const std::vector<int>& allowed_tokens);
+    StreamResult parse_stream_content(const std::string content);
 
     /// \brief Override configure_parameter to handle GPT-oss-specific parameters
     bool configure_parameter(std::string parameter_name, const std::any& value) override {

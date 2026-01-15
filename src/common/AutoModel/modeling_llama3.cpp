@@ -44,7 +44,7 @@ void Llama3::setup_tokenizer(std::string model_path) {
     auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
 }
 
-std::string Llama3::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Llama3::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
@@ -134,7 +134,7 @@ void DeepSeek_r1_8b::setup_tokenizer(std::string model_path) {
     this->think_marker_id = this->tokenizer->encode("<think>")[0];
 }
 
-std::string DeepSeek_r1_8b::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string DeepSeek_r1_8b::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
@@ -186,4 +186,53 @@ std::string DeepSeek_r1_8b::generate_with_prompt(chat_meta_info_t& meta_info, lm
         return "";
     }
     return this->generate(meta_info, length_limit, os);
+}
+
+StreamResult DeepSeek_r1_8b::parse_stream_content(const std::string content) {
+    const std::string MARKER_THINK_START = "<think>";
+    const std::string MARKER_THINK_END = "</think>";
+
+    StreamResult result;
+    buffer_ += content;
+
+    while (true) {
+        if (current_mode_ == StreamEventType::CONTENT) {
+            // Check for the start of a thought block
+            size_t pos = buffer_.find(MARKER_THINK_START);
+
+            if (pos != std::string::npos) {
+                // Emit content before the tag
+                result.content += buffer_.substr(0, pos);
+                result.type = StreamEventType::CONTENT;
+
+                // Remove "<think>\n" and switch mode
+                buffer_ = buffer_.substr(pos + MARKER_THINK_START.length());
+                current_mode_ = StreamEventType::REASONING;
+                continue;
+            }
+        }
+        else if (current_mode_ == StreamEventType::REASONING) {
+            // Check for the end of a thought block
+            size_t pos = buffer_.find(MARKER_THINK_END);
+
+            if (pos != std::string::npos) {
+                // Emit content before the tag
+                result.content += buffer_.substr(0, pos);
+                result.type = StreamEventType::REASONING;
+
+                // Remove "</think>\n" and switch mode
+                buffer_ = buffer_.substr(pos + MARKER_THINK_END.length());
+                current_mode_ = StreamEventType::CONTENT;
+                continue;
+            }
+        }
+
+        // Flush remaining buffer
+        result.content += buffer_;
+        result.type = current_mode_;
+        buffer_.clear();
+        break;
+    }
+
+    return result;
 }

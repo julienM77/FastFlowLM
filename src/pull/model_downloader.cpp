@@ -38,9 +38,9 @@ bool ModelDownloader::is_model_downloaded(const std::string& model_tag, bool qui
 /// \param model_tag the model tag
 /// \return true if the model is compatible, false otherwise
 bool ModelDownloader::check_model_compatibility(const std::string& model_tag, bool quiet_list) {
-    auto model_info = supported_models.get_model_info(model_tag);
+    auto [new_model_tag, model_info] = supported_models.get_model_info(model_tag);
     LM_Config config;
-    config.from_pretrained(this->supported_models.get_model_path(model_tag));
+    config.from_pretrained(this->supported_models.get_model_path(new_model_tag));
     std::string flm_version = config.flm_version;
     std::string flm_min_version = model_info["flm_min_version"];
     int l_l, m_l, r_l; //left, middle, right on local version
@@ -81,26 +81,26 @@ bool ModelDownloader::check_model_compatibility(const std::string& model_tag, bo
 bool ModelDownloader::pull_model(const std::string& model_tag, bool force_redownload) {
     try {
         // Get model info
-        auto model_info = supported_models.get_model_info(model_tag);
+        auto [new_model_tag, model_info] = supported_models.get_model_info(model_tag);
         std::string model_name = model_info["name"];
         std::string base_url = model_info["url"];
         
-        header_print("FLM", "Model: " + model_tag);
+        header_print("FLM", "Model: " + new_model_tag);
         header_print("FLM", "Name: " + model_name);
         
         // Check if model is already downloaded
-        if (!force_redownload && is_model_downloaded(model_tag)) {
+        if (!force_redownload && is_model_downloaded(new_model_tag)) {
             header_print("FLM", "Model already downloaded. Use --force to re-download.");
             return true;
         }
 
         // If force, remove the model first
         if (force_redownload) {
-            remove_model(model_tag);
+            remove_model(new_model_tag);
         }
         
         // Get missing files
-        auto missing_files = get_missing_files(model_tag);
+        auto missing_files = get_missing_files(new_model_tag);
         if (missing_files.empty() && !force_redownload) {
             header_print("FLM", "All files already present.");
             return true;
@@ -116,7 +116,7 @@ bool ModelDownloader::pull_model(const std::string& model_tag, bool force_redown
         }
         
         // Show present files if any
-        auto present_files = get_present_files(model_tag);
+        auto present_files = get_present_files(new_model_tag);
         if (!present_files.empty()) {
             header_print("FLM", "Present files (" + std::to_string(present_files.size()) + "):");
             for (const auto& file : present_files) {
@@ -125,11 +125,11 @@ bool ModelDownloader::pull_model(const std::string& model_tag, bool force_redown
         }
         
         // Build download list
-        auto download_list = build_download_list(model_tag);
+        auto download_list = build_download_list(new_model_tag);
         auto downloads = download_list.first;
         float sum_fize_size = download_list.second;
         if (downloads.empty()) {
-            header_print("FLM", "No files to download for model: " + model_tag);
+            header_print("FLM", "No files to download for model: " + new_model_tag);
             return true; // Return true since all files are already present
         }
         
@@ -151,7 +151,7 @@ bool ModelDownloader::pull_model(const std::string& model_tag, bool force_redown
             header_print("FLM", "Model downloaded successfully!");
             
             // Verify download
-            auto final_missing = get_missing_files(model_tag);
+            auto final_missing = get_missing_files(new_model_tag);
             if (final_missing.empty()) {
                 header_print("FLM", "All files verified successfully.");
             } else {
@@ -190,9 +190,9 @@ std::vector<std::string> ModelDownloader::get_missing_files(const std::string& m
     std::vector<std::string> missing_files;
 
     try {
-        auto model_info = supported_models.get_model_info(model_tag);
+        auto [new_model_tag, model_info] = supported_models.get_model_info(model_tag);
         std::string model_name = model_info["name"];
-        std::string model_path = supported_models.get_model_path(model_tag);
+        std::string model_path = supported_models.get_model_path(new_model_tag);
         std::vector<std::string> model_files = model_info["files"];
 
         // Check if this is a VLM model (default to false if key doesn't exist)
@@ -211,48 +211,6 @@ std::vector<std::string> ModelDownloader::get_missing_files(const std::string& m
 
     return missing_files;
 }
-//std::vector<std::string> ModelDownloader::get_missing_files(const std::string& model_tag) {
-//    std::vector<std::string> files_to_redownload; 
-//
-//    try {
-//        auto model_info = supported_models.get_model_info(model_tag);
-//        std::string model_path = supported_models.get_model_path(model_tag);
-//
-//        auto check_files = [&](const nlohmann::json& file_list) {
-//            for (const auto& file_meta : file_list) {
-//                std::string filename = file_meta["filename"];
-//                std::string expected_hash = file_meta["sha256"];
-//                std::string file_path = get_model_file_path(model_path, filename);
-//
-//                if (!file_exists(file_path)) {
-//                    files_to_redownload.push_back(filename);
-//                }
-//                else {
-//                    std::string local_hash = calculate_file_sha256(file_path);
-//                    if (local_hash != expected_hash) {
-//                        header_print("FLM", "Hash mismatch for " + filename + ". Expected: " + expected_hash + ", Got: " + local_hash);
-//                        files_to_redownload.push_back(filename);
-//                    }
-//                }
-//            }
-//            };
-//
-//        if (model_info.contains("files")) {
-//            check_files(model_info["files"]);
-//        }
-//
-//        bool is_vlm = model_info.value("vlm", false);
-//        if (is_vlm && model_info.contains("vision_files")) {
-//            check_files(model_info["vision_files"]);
-//        }
-//
-//    }
-//    catch (const std::exception& e) {
-//        header_print("ERROR", "Error checking missing files: " + std::string(e.what()));
-//    }
-//
-//    return files_to_redownload;
-//}
 
 /// \brief Get present files
 /// \param model_tag the model tag
@@ -261,9 +219,9 @@ std::vector<std::string> ModelDownloader::get_present_files(const std::string& m
     std::vector<std::string> present_files;
     
     try {
-        auto model_info = supported_models.get_model_info(model_tag);
+        auto [new_model_tag, model_info] = supported_models.get_model_info(model_tag);
         std::string model_name = model_info["name"];
-        std::string model_path = supported_models.get_model_path(model_tag);
+        std::string model_path = supported_models.get_model_path(new_model_tag);
         std::vector<std::string> model_files = model_info["files"];
 
         // Check if this is a VLM model (default to false if key doesn't exist)
@@ -320,14 +278,14 @@ std::pair<nlohmann::json, float> ModelDownloader::build_download_list(const std:
     float sum_file_size = 0;
 
     try {
-        auto model_info = supported_models.get_model_info(model_tag);
+        auto [new_model_tag, model_info] = supported_models.get_model_info(model_tag);
         std::string base_url = model_info["url"];
         std::string model_name = model_info["name"];
         std::string file_url = model_info["file_url"];
         std::vector<std::string> model_files = model_info["files"];
         
         // Create model directory
-        std::string model_path = supported_models.get_model_path(model_tag);
+        std::string model_path = supported_models.get_model_path(new_model_tag);
         std::filesystem::create_directories(model_path);
         
         // GET HF api/models

@@ -81,7 +81,7 @@ void Phi4::setup_tokenizer(std::string model_path) {
     this->extra_context["user_system_prompt"] = this->user_system_prompt;
 }
 
-std::string Phi4::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Phi4::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;

@@ -52,8 +52,8 @@ Runner::Runner(model_list& supported_models, ModelDownloader& downloader, std::s
             this->downloader.pull_model(whisper_tag);
         }
         this->whisper_engine = std::make_unique<Whisper>(&this->npu_device_inst);
-        nlohmann::ordered_json whisper_model_info = this->supported_models.get_model_info(whisper_tag);
-        std::string whisper_model_path = this->supported_models.get_model_path(whisper_tag);
+        auto [new_whisper_tag, whisper_model_info] = this->supported_models.get_model_info(whisper_tag);
+        std::string whisper_model_path = this->supported_models.get_model_path(new_whisper_tag);
         this->whisper_engine->load_model(whisper_model_path, whisper_model_info, this->preemption);
     }
 
@@ -67,15 +67,15 @@ Runner::Runner(model_list& supported_models, ModelDownloader& downloader, std::s
     if (this->auto_chat_engine != nullptr) {
         this->auto_chat_engine.reset();
     }
-    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(this->tag, &this->npu_device_inst);
+    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(this->tag, this->supported_models, &this->npu_device_inst);
     this->auto_chat_engine = std::move(auto_model.second);
     
     this->tag = auto_model.first;
     if (!this->downloader.is_model_downloaded(this->tag)) {
         this->downloader.pull_model(this->tag);
     }
-    nlohmann::json model_info = this->supported_models.get_model_info(this->tag);
-    this->auto_chat_engine->load_model(this->supported_models.get_model_path(this->tag), model_info, this->ctx_length, this->preemption);
+    auto [new_tag, model_info] = this->supported_models.get_model_info(this->tag);
+    this->auto_chat_engine->load_model(this->supported_models.get_model_path(new_tag), model_info, this->ctx_length, this->preemption);
 
     this->generate_limit = -1;
 }
@@ -322,11 +322,7 @@ void Runner::cmd_status(std::vector<std::string>& input_list) {
 void Runner::cmd_load(std::vector<std::string>& input_list) {
     std::string model_name = input_list[1];
 
-    if (!modelTags.count(model_name)) {
-        header_print("ERROR", "Model not found: " << model_name << "; Please check with `/list`");
-        return;
-    }
-    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(model_name, &this->npu_device_inst);
+    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(model_name, this->supported_models, &this->npu_device_inst);
     model_name = auto_model.first;
 
     if (model_name != this->tag) {
@@ -340,9 +336,9 @@ void Runner::cmd_load(std::vector<std::string>& input_list) {
             std::this_thread::sleep_for(std::chrono::milliseconds(2800));
         this->auto_chat_engine = std::move(auto_model.second);
 
-        nlohmann::json model_info = this->supported_models.get_model_info(this->tag);
+        auto [new_tag, model_info] = this->supported_models.get_model_info(this->tag);
 
-        this->auto_chat_engine->load_model(this->supported_models.get_model_path(this->tag), model_info, this->ctx_length, this->preemption);
+        this->auto_chat_engine->load_model(this->supported_models.get_model_path(new_tag), model_info, this->ctx_length, this->preemption);
         this->auto_chat_engine->configure_parameter("system_prompt", this->system_prompt);
 
     }

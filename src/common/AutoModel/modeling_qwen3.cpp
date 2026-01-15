@@ -1,4 +1,4 @@
-/// \file deepseek.cpp
+﻿/// \file deepseek.cpp
 /// \brief deepseek class
 /// \author FastFlowLM Team
 /// \date 2025-09-01
@@ -47,12 +47,13 @@ void Qwen3::setup_tokenizer(std::string model_path) {
     auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
 }
 
-std::string Qwen3::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Qwen3::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
     inputs.extra_context = this->extra_context;
     inputs.extra_context["enable_thinking"] = this->enable_think;
+    inputs.tools = tools;
     return this->chat_tmpl->apply(inputs);
 }
 
@@ -65,7 +66,7 @@ bool Qwen3::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
         return false;
     }
     if (!input.messages.empty()) { // already a formated messages, usually from REST API
-        templated_text = this->apply_chat_template(input.messages);
+        templated_text = this->apply_chat_template(input.messages, input.tools);
     }
     else if (!input.prompt.empty()) { // a pure text, usually from the cli
         nlohmann::ordered_json messages;
@@ -96,6 +97,14 @@ std::string Qwen3::generate_with_prompt(chat_meta_info_t& meta_info, lm_uniform_
         return "";
     }
     return this->_shared_generate(meta_info, length_limit, os);
+}
+
+std::pair<std::string, std::string> Qwen3::parse_nstream_content(const std::string response_text) {
+    return std::make_pair(std::string(), std::string());
+}
+
+StreamResult Qwen3::parse_stream_content(const std::string content) {
+    return _shared_think_tool_calling_pasrsed(content);
 }
 
 /************              Qwen3_IT family            **************/
@@ -135,11 +144,12 @@ void Qwen3_IT::setup_tokenizer(std::string model_path) {
     auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
 }
 
-std::string Qwen3_IT::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Qwen3_IT::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
     inputs.extra_context = this->extra_context;
+    inputs.tools = tools;
     return this->chat_tmpl->apply(inputs);
 }
 
@@ -152,7 +162,7 @@ bool Qwen3_IT::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
         return false;
     }
     if (!input.messages.empty()) { // already a formated messages, usually from REST API
-        templated_text = this->apply_chat_template(input.messages);
+        templated_text = this->apply_chat_template(input.messages, input.tools);
     }
     else if (!input.prompt.empty()) { // a pure text, usually from the cli
         nlohmann::ordered_json messages;
@@ -181,6 +191,107 @@ std::string Qwen3_IT::generate_with_prompt(chat_meta_info_t& meta_info, lm_unifo
         return "";
     }
     return this->_shared_generate(meta_info, length_limit, os);
+}
+
+// Non-stream
+std::pair<std::string, std::string> Qwen3_IT::parse_nstream_content(const std::string response_text) {
+
+    std::string name, arguments;
+
+    std::string start_tag = "<tool_call>";
+    std::string end_tag = "</tool_call>";
+
+    size_t start_pos = response_text.find(start_tag);
+    size_t end_pos = response_text.find(end_tag);
+
+    // Safety check: if tags are not found
+    if (start_pos == std::string::npos || end_pos == std::string::npos) {
+        // error
+        return { name, arguments };
+    }
+
+    start_pos += start_tag.length();
+    std::string json_str = response_text.substr(start_pos, end_pos - start_pos);
+
+    // Parse "name" 
+    std::string key_name = "\"name\": \"";
+    size_t name_start = json_str.find(key_name);
+    if (name_start != std::string::npos) {
+        name_start += key_name.length();
+        size_t name_end = json_str.find("\"", name_start);
+        if (name_end != std::string::npos) {
+            name = json_str.substr(name_start, name_end - name_start);
+        }
+    }
+
+    // Parse "arguments"
+    std::string key_args = "\"arguments\":";
+    size_t args_pos = json_str.find(key_args);
+    if (args_pos != std::string::npos) {
+        size_t brace_start = json_str.find("{", args_pos);
+        size_t brace_end = json_str.rfind("}"); // Find the last closing brace
+
+        if (brace_start != std::string::npos && brace_end != std::string::npos && brace_end > brace_start) {
+            arguments = json_str.substr(brace_start, brace_end - brace_start);
+        }
+    }
+    return { name, arguments };
+}
+
+// Stream
+StreamResult Qwen3_IT::parse_stream_content(const std::string content) {
+    std::string tool_start_tag = "<tool_call>";
+    std::string tool_end_tag = "</tool_call>";
+
+    StreamResult result;
+    result.type = StreamEventType::CONTENT; 
+
+    if (content.find(tool_start_tag) != std::string::npos) {
+        is_in_tool_block_ = true;
+        tool_name_.clear();
+        result.type = StreamEventType::WAITING;
+        return result;
+    }
+
+    if (content.find("</tool_call>") != std::string::npos) {
+        is_in_tool_block_ = false;
+
+        try {
+            auto j = nlohmann::json::parse(tool_name_);
+
+            result.type = StreamEventType::TOOL_DONE;
+            //result.tool_id = generate_id();
+            result.tool_id = "call_" + std::to_string(std::time(nullptr));
+
+            if (j.contains("name")) {
+                result.tool_name = j["name"].get<std::string>();
+            }
+
+            if (j.contains("arguments")) {
+                if (j["arguments"].is_string()) {
+                    result.tool_args_str = j["arguments"].get<std::string>();
+                }
+                else {
+                    result.tool_args_str = j["arguments"].dump();
+                }
+            }
+        }
+        catch (...) {
+            result.type = StreamEventType::CONTENT;
+            result.content = "[Error parsing tool call]";
+        }
+        return result;
+    }
+
+    if (is_in_tool_block_) {
+        tool_name_ += content;
+        result.type = StreamEventType::WAITING; 
+        return result;
+    }
+
+    result.content = content;
+    return result;
+
 }
 
 /************              Qwen3_TK family            **************/
@@ -221,11 +332,12 @@ void Qwen3_TK::setup_tokenizer(std::string model_path) {
     this->think_marker_id = this->tokenizer->encode("<think>")[0];
 }
 
-std::string Qwen3_TK::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string Qwen3_TK::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
     inputs.extra_context = this->extra_context;
+    inputs.tools = tools;
     return this->chat_tmpl->apply(inputs);
 }
 
@@ -238,7 +350,7 @@ bool Qwen3_TK::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
         return false;
     }
     if (!input.messages.empty()) { // already a formated messages, usually from REST API
-        templated_text = this->apply_chat_template(input.messages);
+        templated_text = this->apply_chat_template(input.messages, input.tools);
     }
     else if (!input.prompt.empty()) { // a pure text, usually from the cli
         nlohmann::ordered_json messages;
@@ -271,6 +383,10 @@ std::string Qwen3_TK::generate_with_prompt(chat_meta_info_t& meta_info, lm_unifo
         return "";
     }
     return this->generate(meta_info, length_limit, os);
+}
+
+StreamResult Qwen3_TK::parse_stream_content(const std::string content) {
+    return _shared_think_tool_calling_pasrsed(content);
 }
 
 /************              DeepSeek_r1_0528_8b family            **************/
@@ -309,7 +425,7 @@ void DeepSeek_r1_0528_8b::setup_tokenizer(std::string model_path) {
     auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
 }
 
-std::string DeepSeek_r1_0528_8b::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string DeepSeek_r1_0528_8b::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
@@ -356,4 +472,53 @@ std::string DeepSeek_r1_0528_8b::generate_with_prompt(chat_meta_info_t& meta_inf
         return "";
     }
     return this->_shared_generate(meta_info, length_limit, os);
+}
+
+StreamResult DeepSeek_r1_0528_8b::parse_stream_content(const std::string content) {
+    const std::string MARKER_THINK_START = "<think>";
+    const std::string MARKER_THINK_END = "</think>";
+
+    StreamResult result;
+    buffer_ += content;
+
+    while (true) {
+        if (current_mode_ == StreamEventType::CONTENT) {
+            // Check for the start of a thought block
+            size_t pos = buffer_.find(MARKER_THINK_START);
+
+            if (pos != std::string::npos) {
+                // Emit content before the tag
+                result.content += buffer_.substr(0, pos);
+                result.type = StreamEventType::CONTENT;
+
+                // Remove "<think>\n" and switch mode
+                buffer_ = buffer_.substr(pos + MARKER_THINK_START.length());
+                current_mode_ = StreamEventType::REASONING;
+                continue;
+            }
+        }
+        else if (current_mode_ == StreamEventType::REASONING) {
+            // Check for the end of a thought block
+            size_t pos = buffer_.find(MARKER_THINK_END);
+
+            if (pos != std::string::npos) {
+                // Emit content before the tag
+                result.content += buffer_.substr(0, pos);
+                result.type = StreamEventType::REASONING;
+
+                // Remove "</think>\n" and switch mode
+                buffer_ = buffer_.substr(pos + MARKER_THINK_END.length());
+                current_mode_ = StreamEventType::CONTENT;
+                continue;
+            }
+        }
+
+        // Flush remaining buffer
+        result.content += buffer_;
+        result.type = current_mode_;
+        buffer_.clear();
+        break;
+    }
+
+    return result;
 }

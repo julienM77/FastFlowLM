@@ -23,6 +23,8 @@
 using json = nlohmann::ordered_json;
 
 
+class AutoModel;
+
 // v1/completions
 ///@brief Custom streambuf that captures tokens and sends them immediately
 ///@param model the model
@@ -263,8 +265,8 @@ public:
     ///@brief StreamCallback
     using StreamCallback = std::function<void(const std::string&, bool)>;
 
-    streaming_buf_openai_chat(const std::string& model, StreamCallback callback)
-        : model_name(model), stream_callback(callback), first_chunk(true) {
+    streaming_buf_openai_chat(const std::string& model, AutoModel* auto_chat_engine, StreamCallback callback)
+        : model_name(model), auto_chat_engine(auto_chat_engine), stream_callback(callback), first_chunk(true) {
         // Generate a unique ID for this stream
         generate_stream_id();
         generate_created();
@@ -337,7 +339,9 @@ private:
         system_fingerprint = ss.str();
     }
 
+    void tool_calling_id() {
 
+    }
 
     ///@brief Get UTF-8 sequence length from first byte
     ///@param first_byte the first byte
@@ -402,49 +406,61 @@ private:
     ///@brief Send the response
     ///@param content the content
     ///@param is_final the is final
-    int is_content = 0;
-    int is_template = 0;
     void send_response(const std::string& content, bool is_final) {
+        static int index = 0;
         json response;
 
-        std::string json_content = "";
-        std::string json_reasoning = "";
-
-        harmony_part_t part = harmony_filter_inst->identify_part(content);
-
-        if (model_name == "gpt-oss:20b" || model_name == "gpt-oss" || model_name == "gpt-oss-sg:20b" || model_name == "gpt-oss-sg") {
-            json_content = (part == harmony_part_t::response) ? content : "";
-            json_reasoning = (part == harmony_part_t::reasoning) ? content : "";
+        StreamResult result = auto_chat_engine->parse_stream_content(content);
+        if (result.type == StreamEventType::WAITING) {
+            return;
         }
-        else {
-            json_content = content;
-            json_reasoning = "";
+        json delta;
+        if (result.type == StreamEventType::TOOL_DONE) {
+            delta = {
+                {"tool_calls", json::array({
+                    {
+                        {"index", index++},
+                        {"id", result.tool_id},
+                        {"type", "function"},
+                        {"function", {
+                            {"name", result.tool_name},
+                            {"arguments", result.tool_args_str} 
+                        }}
+                    }
+                })}
+            };
+        }
+        else if (result.type == StreamEventType::REASONING) {
+            delta = {
+                {"role", "assistant"},
+                {"reasoning_content", result.content}
+            };
+        }
+        else if (result.type == StreamEventType::CONTENT) {
+            if (result.content.empty()) return;
 
+            delta = {
+                {"role", "assistant"},
+                {"content", result.content}
+            };
         }
 
-        // Content chunk
         response = {
-            {"id", stream_id},
+            {"id", stream_id}, 
             {"object", "chat.completion.chunk"},
             {"created", created},
             {"model", model_name},
-            {"system_fingerprint", system_fingerprint},
             {"choices", json::array({
                 {
                     {"index", 0},
-                    {"delta", {
-                        {"role", "assistant"},
-                        {"content", json_content},
-                        {"reasoning_content", json_reasoning}
-                    }},
-                    //{"logprobs", nullptr},
+                    {"delta", delta},
                     {"finish_reason", nullptr}
                 }
             })}
         };
 
         stream_callback("data: " + response.dump() + "\n\n", is_final);
-    }   
+    }
 
     ///@brief Send the chat final response
     void send_final_response(chat_meta_info_t& meta_info) {
@@ -475,8 +491,6 @@ private:
                 {"decoding_speed_tps", static_cast<double>(meta_info.generated_tokens) / static_cast<double>(meta_info.decoding_duration) * 1'000'000'000},
             }}
         };
-        //float prefill_speed = this->profiler_list[PREFILL_TIME].get_average_speed();
-        //float decoding_speed = this->profiler_list[DECODING_TIME].get_average_speed();
         stream_callback("data: " + final_response.dump() + "\n\n", false);
         std::cout << "ChatCompletionChunk: " << final_response << std::endl;
         // Send the [DONE] message
@@ -488,6 +502,8 @@ private:
     std::string buffer;
     ///@brief Model name
     std::string model_name;
+    ///@brief auto_chat_engine 
+    AutoModel* auto_chat_engine;
     ///@brief Stream callback
     StreamCallback stream_callback;
     ///@brief Stream ID
@@ -507,8 +523,8 @@ private:
 ///@return the streaming ostream
 class streaming_ostream_openai_chat : public std::ostream {
 public:
-    streaming_ostream_openai_chat(const std::string& model, streaming_buf_openai_chat::StreamCallback callback)
-        : std::ostream(&buf), buf(model, callback) {}
+    streaming_ostream_openai_chat(const std::string& model, AutoModel* auto_chat_engine, streaming_buf_openai_chat::StreamCallback callback)
+        : std::ostream(&buf), buf(model, auto_chat_engine, callback) {}
 
     ///@brief Finalize the chat
     void finalize(chat_meta_info_t& meta_info) {

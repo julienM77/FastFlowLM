@@ -30,6 +30,8 @@
 ///@brief should_exit is used to control the server thread
 std::atomic<bool> should_exit(false);
 
+
+
 ///@brief get_unicode_command_line_args gets Unicode command line arguments
 ///@param argc_out reference to store argument count
 ///@return vector of UTF-8 encoded argument strings
@@ -69,19 +71,6 @@ std::vector<std::string> get_unicode_command_line_args(int& argc_out) {
     return args;
 }
 
-///@brief get_executable_directory gets the directory where the executable is located
-///@return the executable directory path
-std::string get_executable_directory() {
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);
-    std::string exe_path(buffer);
-    size_t last_slash = exe_path.find_last_of("/\\");
-    if (last_slash != std::string::npos) {
-        return exe_path.substr(0, last_slash);
-    }
-    return ".";
-}
-
 ///@brief get_user_documents_directory gets the user's Documents directory
 ///@return the user's Documents directory path
 std::string get_user_documents_directory() {
@@ -90,7 +79,7 @@ std::string get_user_documents_directory() {
         return std::string(buffer);
     }
     // Fallback to executable directory if Documents folder cannot be found
-    return get_executable_directory();
+    return utils::get_executable_directory();
 }
 
 ///@brief ensure_models_directory creates the models directory if it doesn't exist
@@ -182,6 +171,16 @@ int main(int argc, char* argv[]) {
     if (!arg_utils::parse_options(argc, argv, parsed_args)) {
         return 1; // Help was already printed by Boost Program Options
     }
+
+    
+    // Get the command, model tag, and force flag
+    std::string exe_dir = utils::get_executable_directory();
+    std::string config_path = exe_dir + "/model_list.json";
+    // Get the models directory from environment variable or default
+    std::string models_dir = get_models_directory();
+
+    
+    model_list availble_models(config_path, models_dir);
     
     // Handle version requests
     
@@ -223,7 +222,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (command == "run" || command == "serve" || command == "pull" || command == "remove") {
-      if (tag != "model-faker" && (!modelTags.count(tag))) {
+      if (tag != "model-faker" && (!availble_models.is_model_supported(tag))) {
             header_print("ERROR", "Model not found: " << tag << "; Please check with `flm list` and try again.");
             return 1;
         }
@@ -248,17 +247,11 @@ int main(int argc, char* argv[]) {
         header_print("FLM", "Allowing high priority tasks to preempt FLM!");
     }
 
-    // Get the command, model tag, and force flag
-    std::string exe_dir = get_executable_directory();
-    std::string config_path = exe_dir + "/model_list.json";
 
     try {
-        // Get the models directory from environment variable or default
-        std::string models_dir = get_models_directory();
         
         // Load the model list with the models directory as the base
-        model_list supported_models(config_path, models_dir);
-        ModelDownloader downloader(supported_models);
+        ModelDownloader downloader(availble_models);
 
         // Ensure models directory exists
         if (!std::filesystem::exists(models_dir)) {
@@ -267,14 +260,14 @@ int main(int argc, char* argv[]) {
 
         if (command == "run") {
             check_and_notify_new_version();
-            Runner runner(supported_models, downloader, tag, asr, embed, ctx_length, preemption);
+            Runner runner(availble_models, downloader, tag, asr, embed, ctx_length, preemption);
             runner.run();
 
         } else if (command == "serve") {
             check_and_notify_new_version();
             // Create the server
             int port = get_server_port(user_port);
-            auto server = create_lm_server(supported_models, downloader, tag, asr, embed, user_host, port, ctx_length, cors, preemption);
+            auto server = create_lm_server(availble_models, downloader, tag, asr, embed, user_host, port, ctx_length, cors, preemption);
             server->set_max_connections(max_socket_connections);           // Allow up to 10 concurrent connections
             server->set_io_threads(10);          // Allow up to 5 io threads
             server->set_npu_queue_length(max_npu_queue);           // Allow up to 10 concurrent queue
@@ -328,7 +321,7 @@ int main(int argc, char* argv[]) {
             // List the models, this will be used to list the models
             if (list_filter == "installed" || list_filter == "not-installed" || list_filter == "all") {
                 std::cout << "Models:" << std::endl;
-                nlohmann::json models = supported_models.get_all_models();
+                nlohmann::json models = availble_models.get_all_models();
                 for (const auto& model : models["models"]) {
                     bool is_present = downloader.is_model_downloaded(model["name"].get<std::string>(), quiet_list);
                     if ((list_filter == "installed") == is_present || list_filter == "all") {
@@ -359,48 +352,3 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 }
-
-//int main(int argc, char* argv[])
-//{
-//    //check_and_notify_new_version();
-//    std::string exe_dir = get_executable_directory();
-//    std::string config_path = exe_dir + "/model_list.json";
-//    std::string models_dir = get_models_directory();
-//
-//    chat_meta_info_t a;
-//
-//    std::string tag = "gpt-oss";
-//    model_list supported_models(config_path, models_dir);
-//    ModelDownloader downloader(supported_models);
-//    //Runner runner(supported_models, downloader, tag, -1, 0);
-//    std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(tag);
-//    std::unique_ptr<AutoModel> auto_chat_engine = std::move(auto_model.second);
-//    tag = auto_model.first;
-//    auto_chat_engine->load_model(supported_models.get_model_path(tag), supported_models.get_model_info(tag), -1, 0);
-//
-//
-//    lm_uniform_input_t input;
-//    input.prompt = "hi how are you?";
-//    nlohmann::ordered_json messages;
-//    messages.push_back({ {"role", "user"}, {"content", input.prompt} });
-//    std::string templated_text = auto_chat_engine->apply_chat_template(messages);
-//    auto_chat_engine->insert(a, input);
-//    //std::cout << templated_text << std::endl;
-//}
-
-//int main(int argc, char* argv[])
-//{
-//    std::string tag = "qwen3:0.6b"; // User Input
-//    std::string exe_dir = get_executable_directory();
-//    std::string config_path = exe_dir + "/model_list.json";
-//    std::string models_dir = get_models_directory();
-//    //std::cout << exe_dir << std::endl; // C:\Users\nock9\Projects\FastFlowLM\out
-//    //std::cout << models_dir << std::endl; // C:\Users\nock9\Documents\flm
-//
-//    model_list supported_models(config_path, models_dir);
-//    ModelDownloader downloader(supported_models);
-//    Runner runner(supported_models, downloader, tag);
-//    runner.run();
-//
-//    return 0;
-//}

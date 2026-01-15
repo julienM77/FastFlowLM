@@ -7,27 +7,6 @@
 
 #include "AutoModel/automodel.hpp"
 
-std::unordered_set<std::string> modelTags = {
-        "llama3.1", "llama3.1:8b",
-        "llama3.2","llama3.2:1b", "llama3.2:3b",
-        "deepseek-r1", "deepseek-r1:8b",
-        "deepseek-r1-0528", "deepseek-r1-0528:8b",
-        "qwen3", "qwen3:0.6b", "qwen3:1.7b", "qwen3:4b", "qwen3:8b",
-        "qwen3-it", "qwen3-it:4b",
-        "qwen3-tk", "qwen3-tk:4b",
-        "gemma3", "gemma3:270m", "gemma3:1b",
-        "gemma3:4b",
-        "medgemma", "medgemma:4b",
-        "gpt-oss", "gpt-oss:20b",
-        "gpt-oss-sg", "gpt-oss-sg:20b",
-        "whisper-v3", "whisper-v3:turbo",
-        "embed-gemma", "embed-gemma:300m",
-        "qwen3vl-it", "qwen3vl-it:4b",
-        "qwen3vl-tk", "qwen3vl-tk:4b",
-        "lfm2", "lfm2:1.2b", "lfm2:2.6b",
-        "lfm2.5", "lfm2.5:1.2b",
-        "phi4-mini-it", "phi4-mini-it:4b"
-};
 
 AutoModel::AutoModel(xrt::device* npu_device_inst, std::string current_model) {
     this->npu_device_inst = npu_device_inst;
@@ -190,7 +169,11 @@ std::string AutoModel::_shared_generate(chat_meta_info_t& meta_info, int length_
     while (this->total_tokens < this->MAX_L){
         if (is_cancelled()) {
             reason = CANCEL_DETECTED;
-            //cancellation_token->reset();
+            // reset stream content 
+            buffer_.clear();
+            current_mode_ = StreamEventType::CONTENT;
+            tool_name_.clear();
+            is_in_tool_block_ = false;
             break;
         }
         this->profiler_list[DECODING_TIME].start();
@@ -228,6 +211,126 @@ std::string AutoModel::_shared_generate(chat_meta_info_t& meta_info, int length_
     if (this->total_tokens >= this->MAX_L){
         header_print("WARNING", "Max length reached, stopping generation...");
     }
+    return result;
+}
+
+StreamResult AutoModel::_shared_think_tool_calling_pasrsed(const std::string content) {
+    const std::string MARKER_THINK_START = "<think>";
+    const std::string MARKER_THINK_END = "</think>";
+    const std::string MARKER_TOOL_START = "<tool_call>";
+    const std::string MARKER_TOOL_END = "</tool_call>";
+
+    StreamResult result;
+    buffer_ += content;
+
+    while (true) {
+        // check tool calling
+        if (!is_in_tool_block_) {
+            size_t tool_start_pos = buffer_.find(MARKER_TOOL_START);
+            if (tool_start_pos != std::string::npos) {
+                // find the <tool_call> and output the content before it
+                if (tool_start_pos > 0) {
+                    result.content = buffer_.substr(0, tool_start_pos);
+                    result.type = current_mode_;
+                    buffer_ = buffer_.substr(tool_start_pos);
+                    return result;
+                }
+
+                // go to tool calling
+                is_in_tool_block_ = true;
+                tool_name_.clear();
+                buffer_ = buffer_.substr(MARKER_TOOL_START.length());
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+        }
+
+        // tool calling process
+        if (is_in_tool_block_) {
+            size_t tool_end_pos = buffer_.find(MARKER_TOOL_END);
+            if (tool_end_pos != std::string::npos) {
+                tool_name_ += buffer_.substr(0, tool_end_pos);
+                buffer_ = buffer_.substr(tool_end_pos + MARKER_TOOL_END.length());
+                is_in_tool_block_ = false;
+
+                try {
+                    auto j = nlohmann::json::parse(tool_name_);
+
+                    result.type = StreamEventType::TOOL_DONE;
+                    result.tool_id = "generate_id()";
+
+                    if (j.contains("name")) {
+                        result.tool_name = j["name"].get<std::string>();
+                    }
+
+                    if (j.contains("arguments")) {
+                        if (j["arguments"].is_string()) {
+                            result.tool_args_str = j["arguments"].get<std::string>();
+                        }
+                        else {
+                            result.tool_args_str = j["arguments"].dump();
+                        }
+                    }
+
+                    return result;
+                }
+                catch (...) {
+                    result.type = StreamEventType::CONTENT;
+                    result.content = "[Error parsing tool call]";
+                    return result;
+                }
+            }
+            else {
+                tool_name_ += buffer_;
+                buffer_.clear();
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+        }
+
+        // normal and reasoning
+        if (current_mode_ == StreamEventType::CONTENT) {
+            size_t think_start_pos = buffer_.find(MARKER_THINK_START);
+
+            if (think_start_pos != std::string::npos) {
+                if (think_start_pos > 0) {
+                    result.content = buffer_.substr(0, think_start_pos);
+                    result.type = StreamEventType::CONTENT;
+                    buffer_ = buffer_.substr(think_start_pos);
+                    return result;
+                }
+                buffer_ = buffer_.substr(MARKER_THINK_START.length());
+                current_mode_ = StreamEventType::REASONING;
+                continue;
+            }
+        }
+        else if (current_mode_ == StreamEventType::REASONING) {
+            size_t think_end_pos = buffer_.find(MARKER_THINK_END);
+
+            if (think_end_pos != std::string::npos) {
+                if (think_end_pos > 0) {
+                    result.content = buffer_.substr(0, think_end_pos);
+                    result.type = StreamEventType::REASONING;
+                    buffer_ = buffer_.substr(think_end_pos);
+                    return result;
+                }
+                buffer_ = buffer_.substr(MARKER_THINK_END.length());
+                current_mode_ = StreamEventType::CONTENT;
+                continue;
+            }
+        }
+
+        if (!buffer_.empty()) {
+            result.content = buffer_;
+            result.type = current_mode_;
+            buffer_.clear();
+            return result;
+        }
+
+        break;
+    }
+
+    result.type = current_mode_;
     return result;
 }
 

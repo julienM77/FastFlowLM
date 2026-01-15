@@ -23,17 +23,17 @@
 ///@brief Normalize messages by merging consecutive user messages (like Ollama does)
 ///@param messages the original messages
 ///@return normalized messages with consecutive user messages merged
-static nlohmann::ordered_json normalize_messages(nlohmann::ordered_json messages) {
+static json normalize_messages(json messages) {
     if (messages.empty()) return messages;
 
-    nlohmann::ordered_json normalized = nlohmann::ordered_json::array();
+    json normalized = nlohmann::ordered_json::array();
 
     for (size_t i = 0; i < messages.size(); i++) {
         auto current_msg = messages[i];
         std::string role = current_msg.value("role", "");
 
         if (role == "user") {
-            nlohmann::ordered_json merged_content_array = nlohmann::ordered_json::array();
+            json merged_content_array = json::array();
 
             // Merge all consecutive user messages into array format
             while (i < messages.size() && messages[i].value("role", "") == "user") {
@@ -60,7 +60,7 @@ static nlohmann::ordered_json normalize_messages(nlohmann::ordered_json messages
             current_msg["content"] = merged_content_array;
         }
         else if (role == "system") {
-            nlohmann::ordered_json merged_content_array = nlohmann::ordered_json::array();
+            json merged_content_array = json::array();
 
             // Merge all consecutive system messages into array format
             while (i < messages.size() && messages[i].value("role", "") == "system") {
@@ -73,7 +73,7 @@ static nlohmann::ordered_json normalize_messages(nlohmann::ordered_json messages
                     else if (messages[i]["content"].is_string()) {
                         std::string text = messages[i]["content"].get<std::string>();
                         if (!text.empty()) {
-                            nlohmann::ordered_json text_item;
+                            json text_item;
                             text_item["type"] = "text";
                             text_item["text"] = text;
                             merged_content_array.push_back(text_item);
@@ -92,11 +92,11 @@ static nlohmann::ordered_json normalize_messages(nlohmann::ordered_json messages
     return normalized;
 }
 
-static nlohmann::ordered_json normalize_template(nlohmann::ordered_json messages) {
-    nlohmann::ordered_json template_message = nlohmann::ordered_json::array();
+static json normalize_template(json messages) {
+    json template_message = json::array();
 
     for (auto& message : messages) {
-        nlohmann::ordered_json new_message;
+        json new_message = message;
         std::string merged_text;
         nlohmann::ordered_json::array_t merged_images;
 
@@ -128,7 +128,7 @@ static nlohmann::ordered_json normalize_template(nlohmann::ordered_json messages
             }
         }
 
-        new_message["role"] = message["role"];
+        //new_message["role"] = message["role"];
         new_message["content"] = merged_text;
         if (!merged_images.empty()) {
             new_message["images"] = merged_images;
@@ -205,14 +205,14 @@ void RestHandler::ensure_model_loaded(const std::string& model_tag) {
         if (auto_chat_engine != nullptr) {
             auto_chat_engine.reset();
         }
-        std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(ensure_tag, &npu_device_inst);
+        std::pair<std::string, std::unique_ptr<AutoModel>> auto_model = get_auto_model(ensure_tag, this->supported_models, &this->npu_device_inst);
         auto_chat_engine = std::move(auto_model.second);
         ensure_tag = auto_model.first;
         if (!downloader.is_model_downloaded(ensure_tag)) {
             downloader.pull_model(ensure_tag);
         }
-        nlohmann::json model_info = supported_models.get_model_info(ensure_tag);
-        auto_chat_engine->load_model(supported_models.get_model_path(ensure_tag), model_info, ctx_length, preemption);
+        auto [new_ensure_tag, model_info] = supported_models.get_model_info(ensure_tag);
+        auto_chat_engine->load_model(supported_models.get_model_path(new_ensure_tag), model_info, ctx_length, preemption);
         current_model_tag = ensure_tag;
     }
 }
@@ -225,8 +225,8 @@ void RestHandler::ensure_asr_model_loaded(const std::string& model_tag) {
         downloader.pull_model(ensure_tag);
     }
     this->whisper_engine = std::make_unique<Whisper>(&this->npu_device_inst);
-    nlohmann::ordered_json whisper_model_info = this->supported_models.get_model_info(ensure_tag);
-    std::string whisper_model_path = this->supported_models.get_model_path(ensure_tag);
+    auto [new_ensure_tag, whisper_model_info] = this->supported_models.get_model_info(ensure_tag);
+    std::string whisper_model_path = this->supported_models.get_model_path(new_ensure_tag);
     this->whisper_engine->load_model(whisper_model_path, whisper_model_info, this->preemption);
 }
 
@@ -239,8 +239,8 @@ void RestHandler::ensure_embed_model_loaded(const std::string& model_tag) {
     }
     auto [embedding_model_tag, auto_embedding_engine] = get_auto_embedding_model(ensure_tag, &this->npu_device_inst);
     this->auto_embedding_engine = std::move(auto_embedding_engine);
-    nlohmann::ordered_json embedding_model_info = this->supported_models.get_model_info(embedding_model_tag);
-    std::string embedding_model_path = this->supported_models.get_model_path(embedding_model_tag);
+    auto [new_embedding_model_tag, embedding_model_info] = this->supported_models.get_model_info(embedding_model_tag);
+    std::string embedding_model_path = this->supported_models.get_model_path(new_embedding_model_tag);
     this->auto_embedding_engine->load_model(embedding_model_path, embedding_model_info, this->preemption);
 }
 
@@ -276,6 +276,45 @@ void RestHandler::configure_chat_engine_parameters(const json& options, const js
         std::string reasoning_effort = request["reasoning_effort"];
         auto_chat_engine->configure_parameter("reasoning_effort", reasoning_effort);
     }
+}
+
+json RestHandler::build_nstream_response(std::string response_text) {
+    // Get tool info
+    auto tool_info = auto_chat_engine->parse_nstream_content(response_text);
+
+    json message;
+    message["role"] = "assistant";
+
+    bool is_tool_call = !tool_info.first.empty();
+
+    if (is_tool_call) {
+        message["content"] = nullptr;
+        message["tool_calls"] = json::array({
+            {
+                {"index", 0},
+                {"id", "call_" + tool_info.first}, // Generating a pseudo ID based on name or random
+                {"type", "function"},
+                {"function", {
+                    {"name", tool_info.first},
+                    {"arguments", tool_info.second}
+                }}
+            }
+        });
+    }
+    else {
+        // Standard text response
+        message["content"] = response_text;
+    }
+
+    // Construct the final choice object
+    return json::array({
+        {
+            {"index", 0},
+            {"message", message},
+            {"logprobs", nullptr},
+            {"finish_reason", is_tool_call ? "tool_calling" : "stop"}
+        }
+    });
 }
 
 ///@brief Handle the show request
@@ -604,7 +643,7 @@ void RestHandler::handle_ps(const json& request,
         
         std::string expires_at = expires_ss.str();
         
-        json model_info = supported_models.get_model_info(current_model_tag);
+        auto [new_current_model_tag, model_info] = supported_models.get_model_info(current_model_tag);
         json response = {
             {"models", json::array({
                 {
@@ -700,13 +739,19 @@ void RestHandler::handle_openai_chat_completion(const json& request,
                                                std::shared_ptr<CancellationToken> cancellation_token) {
     try {
         // Extract OpenAI-style parameters
-        nlohmann::ordered_json current_messages = request["messages"];
+        json current_messages = request["messages"];
         std::string model = request.value("model", current_model_tag);
         std::string reasoning_effort = request.value("reasoning_effort", "medium");
         bool stream = request.value("stream", false);
-        json options = request.value("options", json::object());
-      
         int length_limit = request.value("max_tokens", 4096);
+        json tools = request.value("tools", json::array());
+        json options = request.value("options", json::object());
+
+        //for (size_t i = 0; i < current_messages.size(); ++i) {
+        //    const auto& msg = current_messages[i];
+        //    std::cout << "MSG = " << msg.dump(2) << std::endl;
+        //}
+
 
         auto load_start_time = time_utils::now();
         ensure_model_loaded(model);
@@ -719,23 +764,31 @@ void RestHandler::handle_openai_chat_completion(const json& request,
         static std::string current_model=model;
         uint64_t sum_new1 = 0;
         uint64_t sum_new2 = 0;
-        nlohmann::ordered_json messages;
+        json messages;
 
+        // kv-cache
         if (model != current_model) { // switch models will clear context
             sum_old++;
             current_model = model;
         }
-
         if (current_messages.size() > 2) {
-
             for (size_t i = 0; i < current_messages.size(); ++i) {
-                std::string value = current_messages[i].value("content", "");
+                const auto& msg = current_messages[i];
+                const std::string role = msg.value("role", "");
+                const std::string content = msg.value("content", "");
+
+                bool has_tool_call = msg.contains("tool_calls");
+                bool skip_checksum = (role == "tool") || has_tool_call;
+
+                if (skip_checksum) continue;
+                    
                 if(i < current_messages.size()-2)
-                    sum_new1 = checksum(value.data(), value.size(), sum_new1);
-                sum_new2 = checksum(value.data(), value.size(), sum_new2);
+                    sum_new1 = checksum(content.data(), content.size(), sum_new1);
+                sum_new2 = checksum(content.data(), content.size(), sum_new2);
             }
 
             if (sum_old == sum_new1) {
+                header_print("FLM", "Use cached prompt!");
                 messages.push_back(current_messages.back());
             }
             else {
@@ -780,8 +833,9 @@ void RestHandler::handle_openai_chat_completion(const json& request,
 
         chat_meta_info_t meta_info;
         lm_uniform_input_t uniformed_input;
+        uniformed_input.messages = messages;
+        uniformed_input.tools = tools;
         meta_info.load_duration = (uint64_t)time_utils::duration_ns(load_start_time, load_end_time).first;
-        header_print("FLM", "Start generating...");
         if (stream){
             // Create a wrapper callback that passes the pre-formatted SSE string directly
             cancellation_token->reset();
@@ -789,14 +843,16 @@ void RestHandler::handle_openai_chat_completion(const json& request,
                 json data_json = data;
                 send_streaming_response(data_json, is_final);
                 };
-            streaming_ostream_openai_chat ostream(model, openai_stream_callback);  // streaming in completion format
-            uniformed_input.messages = messages;
+            streaming_ostream_openai_chat ostream(model, auto_chat_engine.get(), openai_stream_callback);  // streaming in chat completion format
+
+            header_print("FLM", "Start prefill...");
             bool success = auto_chat_engine->insert(meta_info, uniformed_input);
             if (!success) {
                 json error_response = { {"error", "Max length reached"} };
                 send_response(error_response);
                 return;
             }
+            header_print("FLM", "Start generating...");
             auto_chat_engine->generate(meta_info, length_limit, ostream, [&] { return cancellation_token->cancelled(); });
             ostream.finalize(meta_info);
 
@@ -806,27 +862,17 @@ void RestHandler::handle_openai_chat_completion(const json& request,
             }
         }
         else {
-            uniformed_input.messages = messages;
             nullstream nstream;
             std::string response_text = auto_chat_engine->generate_with_prompt(meta_info, uniformed_input, length_limit, nstream);
+
+            // check response_text
+            json choices = build_nstream_response(response_text);
             json response = {
                 {"id", "fastflowlm-chat-completion"},
                 {"object", "chat.completion"},
                 {"created", static_cast<long long>(std::time(nullptr))},
                 {"model", model},
-                {"choices", json::array({
-                    {
-                        {"index", 0},
-                        {"message", {
-                            {"role", "assistant"},
-                            {"content", response_text},
-                            {"refusal", nullptr},
-                            {"annotations", json::array()}
-                        }},
-                        {"logprobs", nullptr},
-                        {"finish_reason", "stop"}
-                    }
-                })},
+                {"choices", choices},
                 {"usage", {
                     {"prompt_tokens", meta_info.prompt_tokens},
                     {"completion_tokens", meta_info.generated_tokens},
@@ -854,8 +900,6 @@ void RestHandler::handle_openai_chat_completion(const json& request,
                 {"service_tier", "default"}
             };
             send_response(response);
-            // auto history = this->chat_engine->get_history();
-            // std::cout << "history: " << history.first << std::endl;
             this->auto_chat_engine->clear_context();
         }
 

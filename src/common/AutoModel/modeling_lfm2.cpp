@@ -1,4 +1,4 @@
-/// \file lfm2.cpp
+﻿/// \file lfm2.cpp
 /// \brief lfm2 class
 /// \author FastFlowLM Team
 /// \date 2025-09-04
@@ -29,7 +29,7 @@ void LFM2::load_model(std::string model_path, json model_info, int default_conte
 
     sampler_config config;
     config.rep_penalty = 1.1;
-    config.temperature = 0.6;
+    config.temperature = 0.3;
     config.top_p = 0.95;
     config.top_k = 10;
     config.rep_penalty_window = 1024;
@@ -46,12 +46,15 @@ void LFM2::setup_tokenizer(std::string model_path) {
     this->tokenizer->is_doubled_encoded = true;
 }
 
-std::string LFM2::apply_chat_template(nlohmann::ordered_json& messages) {
+std::string LFM2::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
     minja::chat_template_inputs inputs;
+    minja::chat_template_options opt;
+    opt.polyfill_tool_responses = false;
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
     inputs.extra_context = this->extra_context;
-    return this->chat_tmpl->apply(inputs);
+    inputs.tools = tools;
+    return this->chat_tmpl->apply(inputs, opt);
 }
 
 bool LFM2::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
@@ -63,7 +66,8 @@ bool LFM2::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
         return false;
     }
     if (!input.messages.empty()) { // already a formated messages, usually from REST API
-        templated_text = this->apply_chat_template(input.messages);
+        //templated_text = this->apply_chat_template(input.messages);
+        templated_text = this->apply_chat_template(input.messages, input.tools);
     }
     else if (!input.prompt.empty()) { // a pure text, usually from the cli
         nlohmann::ordered_json messages;
@@ -118,4 +122,173 @@ std::string LFM2::generate_with_prompt(chat_meta_info_t& meta_info, lm_uniform_i
         return "";
     }
     return this->generate(meta_info, length_limit, os);
+}
+
+StreamResult LFM2::parse_stream_content(const std::string content) {
+    const std::string TOOL_START = "<|tool_call_start|>";
+    const std::string TOOL_END = "<|tool_call_end|>";
+
+    StreamResult result;
+    buffer_ += content;  
+
+    while (true) {
+        if (!is_in_tool_block_) {
+            size_t tool_start_pos = buffer_.find(TOOL_START);
+
+            if (tool_start_pos != std::string::npos) {
+                if (tool_start_pos > 0) {
+                    result.content = buffer_.substr(0, tool_start_pos);
+                    result.type = StreamEventType::CONTENT;
+                    buffer_ = buffer_.substr(tool_start_pos);
+                    return result;
+                }
+
+                is_in_tool_block_ = true;
+                tool_name_.clear();
+                buffer_ = buffer_.substr(TOOL_START.length());
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+            else {
+                if (!buffer_.empty()) {
+                    result.content = buffer_;
+                    result.type = StreamEventType::CONTENT;
+                    buffer_.clear();
+                    return result;
+                }
+                break;
+            }
+        }
+
+        if (is_in_tool_block_) {
+            size_t tool_end_pos = buffer_.find(TOOL_END);
+
+            if (tool_end_pos != std::string::npos) {
+                tool_name_ += buffer_.substr(0, tool_end_pos);
+                buffer_ = buffer_.substr(tool_end_pos + TOOL_END.length());
+                is_in_tool_block_ = false;
+
+                std::string raw = tool_name_;
+
+                size_t start = raw.find_first_not_of(" \t\n\r[");
+                if (start == std::string::npos) {
+                    result.type = StreamEventType::CONTENT;
+                    result.content = "[Error: Empty tool call]";
+                    return result;
+                }
+                raw = raw.substr(start);
+
+                size_t pos_open = raw.find('(');
+                if (pos_open == std::string::npos) {
+                    result.type = StreamEventType::CONTENT;
+                    result.content = "[Error: No function bracket found]";
+                    return result;
+                }
+
+                std::string fn_name = raw.substr(0, pos_open);
+                size_t name_end = fn_name.find_last_not_of(" \t\n\r");
+                fn_name = fn_name.substr(0, name_end + 1);
+
+                int paren_count = 0;
+                size_t pos_close = pos_open;
+                for (size_t i = pos_open; i < raw.length(); ++i) {
+                    if (raw[i] == '(') paren_count++;
+                    if (raw[i] == ')') {
+                        paren_count--;
+                        if (paren_count == 0) {
+                            pos_close = i;
+                            break;
+                        }
+                    }
+                }
+
+                std::string args_part = raw.substr(pos_open + 1, pos_close - pos_open - 1);
+
+                json args_json = json::object();
+
+                size_t pos = 0;
+                while (pos < args_part.length()) {
+                    while (pos < args_part.length() &&
+                        (args_part[pos] == ' ' || args_part[pos] == ',' ||
+                            args_part[pos] == '\t' || args_part[pos] == '\n')) {
+                        pos++;
+                    }
+                    if (pos >= args_part.length()) break;
+
+                    size_t eq_pos = args_part.find('=', pos);
+                    if (eq_pos == std::string::npos) break;
+
+                    std::string key = args_part.substr(pos, eq_pos - pos);
+                    size_t key_start = key.find_first_not_of(" \t\n\r");
+                    size_t key_end = key.find_last_not_of(" \t\n\r");
+                    if (key_start != std::string::npos) {
+                        key = key.substr(key_start, key_end - key_start + 1);
+                    }
+
+                    pos = eq_pos + 1;
+                    while (pos < args_part.length() &&
+                        (args_part[pos] == ' ' || args_part[pos] == '\t')) {
+                        pos++;
+                    }
+
+                    std::string value;
+                    if (pos < args_part.length() && args_part[pos] == '"') {
+                        pos++; 
+                        size_t value_end = pos;
+                        while (value_end < args_part.length() && args_part[value_end] != '"') {
+                            if (args_part[value_end] == '\\') value_end++; 
+                            value_end++;
+                        }
+                        value = args_part.substr(pos, value_end - pos);
+                        pos = value_end + 1; 
+                        args_json[key] = value;
+                    }
+                    else {
+                        size_t value_end = pos;
+                        while (value_end < args_part.length() &&
+                            args_part[value_end] != ',' && args_part[value_end] != ')') {
+                            value_end++;
+                        }
+                        value = args_part.substr(pos, value_end - pos);
+                        size_t v_start = value.find_first_not_of(" \t\n\r");
+                        size_t v_end = value.find_last_not_of(" \t\n\r");
+                        if (v_start != std::string::npos) {
+                            value = value.substr(v_start, v_end - v_start + 1);
+                        }
+                        args_json[key] = value;
+                        pos = value_end;
+                    }
+                }
+
+                size_t next_tool_start = pos_close + 1;
+                while (next_tool_start < raw.length() &&
+                    (raw[next_tool_start] == ',' || raw[next_tool_start] == ' ' ||
+                        raw[next_tool_start] == '\t' || raw[next_tool_start] == '\n' ||
+                        raw[next_tool_start] == ']')) {
+                    next_tool_start++;
+                }
+
+                if (next_tool_start < raw.length()) {
+                    buffer_ = TOOL_START + "[" + raw.substr(next_tool_start) + "]" + TOOL_END + buffer_;
+                }
+
+                result.type = StreamEventType::TOOL_DONE;
+                result.tool_id = "call_" + std::to_string(std::time(nullptr));
+                result.tool_name = fn_name;
+                result.tool_args_str = args_json.dump();
+
+                return result;
+
+            }
+            else {
+                tool_name_ += buffer_;
+                buffer_.clear();
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+        }
+    }
+
+    result.type = StreamEventType::WAITING;
+    return result;
 }

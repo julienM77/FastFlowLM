@@ -38,11 +38,27 @@
 // Forward declaration
 struct CancellationToken;
 
+enum class StreamEventType {
+	WAITING,        
+	CONTENT,        
+	REASONING,      
+	TOOL_DONE,
+};
+
+struct StreamResult {
+	StreamEventType type;
+	std::string content;       
+	std::string tool_id;       
+	std::string tool_name;     
+	std::string tool_args_str; 
+};
+
 typedef enum {
-    EOT_DETECTED,
+    EOT_DETECTED, 
     MAX_LENGTH_REACHED,
     ERROR_DETECTED,
-	CANCEL_DETECTED
+	CANCEL_DETECTED,
+	TOOL_DETECTED
 } stop_reason_t;
 
 inline std::string stop_reason_to_string(stop_reason_t reason){
@@ -55,7 +71,9 @@ inline std::string stop_reason_to_string(stop_reason_t reason){
 			return "cancel";
         case ERROR_DETECTED:
             return "error";
-        default:
+		case TOOL_DETECTED:
+			return "tool_calls";
+		default:
             return "UNKNOWN";
     }
 }
@@ -85,27 +103,10 @@ struct lm_uniform_input_t {
 	std::vector<input_payload_type_t> image_payload_types;
 	std::vector<std::string> audios;
 	std::vector<input_payload_type_t> audio_payload_types;
+	nlohmann::ordered_json tools;
 };
 
 using json = nlohmann::ordered_json;
-
-//typedef enum {
-//    EOT_DETECTED,
-//    MAX_LENGTH_REACHED,
-//    ERROR_DETECTED
-//} stop_reason_t;
-//
-//typedef struct {
-//    int prompt_tokens;
-//    int generated_tokens;
-//    uint64_t total_duration; // in nanoseconds
-//    uint64_t load_duration; // in nanoseconds
-//    uint64_t prefill_duration; // in nanoseconds
-//    uint64_t decoding_duration; // in nanoseconds
-//    stop_reason_t stop_reason;
-//} chat_meta_info_t;
-
-extern std::unordered_set<std::string> modelTags;
 
 class AutoModel {
 protected:
@@ -153,11 +154,20 @@ protected:
 	std::vector<profiler> profiler_list;
 	time_utils::time_with_unit last_prefill_time;
 
+	std::string tool_name_; 
+	bool is_in_tool_block_ = false;
+	std::string buffer_;
+	StreamEventType current_mode_ = StreamEventType::CONTENT;
+	bool waiting_for_header_ = true;
+
+
 	void _shared_load_model(std::string model_path, json model_info, int default_context_length = -1, bool enable_preemption = false);
 	nlohmann::json _shared_setup_tokenizer(std::string model_path);
 
 	bool _shared_insert(chat_meta_info_t& meta_info, std::vector<int>& tokens, void* payload = nullptr);
 	std::string _shared_generate(chat_meta_info_t& meta_info, int length_limit, std::ostream& os, std::function<bool()> is_cancelled = [] { return false; });
+
+	StreamResult _shared_think_tool_calling_pasrsed(const std::string content);
 
 public:
 	//************ Shared by all models *************/
@@ -302,9 +312,21 @@ public:
 		return configure_parameter(parameter_name, std::any(value));
 	}
 
-	virtual std::string apply_chat_template(nlohmann::ordered_json& messages) = 0;
+	virtual std::string apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools = nlohmann::ordered_json::object()) = 0;
 
-	
+	virtual std::pair<std::string, std::string> parse_nstream_content(const std::string response_text) {
+		return std::make_pair(std::string(), std::string());
+	}
+
+	virtual StreamResult parse_stream_content(const std::string content) {
+		//header_print("AUTOMODEL PARSING", content);
+
+		StreamResult result;
+		result.type = StreamEventType::CONTENT; 
+		result.content = content;
+
+		return result;
+	}
 };
 
 

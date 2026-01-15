@@ -106,6 +106,8 @@ private:
     void ensure_asr_model_loaded(const std::string& model_tag);
     void ensure_embed_model_loaded(const std::string& model_tag);
     void configure_chat_engine_parameters(const json& options, const json& request);
+    json build_nstream_response(std::string response_text);
+
 
     std::unique_ptr<AutoModel> auto_chat_engine;
     std::unique_ptr<Whisper> whisper_engine;

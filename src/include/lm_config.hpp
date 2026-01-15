@@ -7,7 +7,9 @@
 #pragma once
 
 #include "typedef.hpp"
+#include "utils/utils.hpp"
 #include "nlohmann/json.hpp"
+#include <filesystem>
 
 /// \brief LM_Config class
 class LM_Config{
@@ -33,18 +35,12 @@ class LM_Config{
         u32 addr_l_begin_mha;
         u32 addr_l_end_mha;
         u32 addr_kk;
-        std::string layer_xclbin_name;
-        std::string lm_head_xclbin_name;
-        std::string dequant_xclbin_name;
-        std::string mm_engine_xclbin_name;
-        std::string mha_engine_xclbin_name;
         std::string flm_version;
+        std::string exec_path;
 
         //vision specific
         std::string vision_model_weight;
 
-        std::string vision_mm_engine_xclbin_name;
-        std::string vision_mha_engine_xclbin_name;
         bool is_vlm;
         u32 vision_conv2d_stride;
         u32 vision_conv2d_padding;
@@ -70,9 +66,15 @@ class LM_Config{
         /// \brief from pretrained
         /// \param model_name the model name
         void from_pretrained(std::string model_name){
+            // #define DEV_BUILD
+            #ifdef DEV_BUILD
+                this->exec_path = "C:\\Users\\alfred\\Projects\\FastFlowLM\\xclbins";
+            #else
+                this->exec_path = utils::get_executable_directory();
+            #endif
             this->model_path = model_name;
-            this->model_name = model_name;
-            std::ifstream file(model_name + "/config.json");
+            this->model_name = std::filesystem::path(model_name).filename().string();
+            std::ifstream file(this->model_path + "/config.json");
             if (!file.is_open()){
                 std::cerr << "Failed to open file: " << model_name << std::endl;
                 exit(1);
@@ -99,18 +101,11 @@ class LM_Config{
             JSON_GET(this->addr_l_begin_mha, this->_json_config, "addr_l_begin_mha", 0, u32);
             JSON_GET(this->addr_l_end_mha, this->_json_config, "addr_l_end_mha", 0, u32);
             JSON_GET(this->addr_kk, this->_json_config, "addr_kk", 0, u32);
-            JSON_GET(this->layer_xclbin_name, this->_json_config, "layer_xclbin_name", "layer.xclbin", std::string);
-            JSON_GET(this->lm_head_xclbin_name, this->_json_config, "lm_head_xclbin_name", "lm_head.xclbin", std::string);
-            JSON_GET(this->dequant_xclbin_name, this->_json_config, "dequant_xclbin_name", "dequant.xclbin", std::string);
-            JSON_GET(this->mm_engine_xclbin_name, this->_json_config, "mm_engine_xclbin_name", "mm.xclbin", std::string);
-            JSON_GET(this->mha_engine_xclbin_name, this->_json_config, "mha_engine_xclbin_name", "attn.xclbin", std::string);
 
 
             // config for vision
             {   
                 JSON_GET(this->vision_model_weight, this->_json_config, "vision_model_weight", "", std::string);
-                JSON_GET(this->vision_mm_engine_xclbin_name, this->_json_config, "vision_mm_engine_xclbin_name", "", std::string);
-                JSON_GET(this->vision_mha_engine_xclbin_name, this->_json_config, "vision_mha_engine_xclbin_name", "", std::string);
                 JSON_GET(this->vision_conv2d_stride, this->_json_config, "vision_conv2d_stride", 0, u32);
                 JSON_GET(this->vision_conv2d_padding, this->_json_config, "vision_conv2d_padding", 0, u32);
                 JSON_GET(this->vision_conv2d_kernel, this->_json_config, "vision_conv2d_kernel", 0, u32);
@@ -142,13 +137,6 @@ class LM_Config{
             assert(this->rms_norm_eps > 0);
             assert(this->addr_qk > 0);
             assert(this->addr_kv > 0);
-            this->layer_xclbin_name = this->model_path + "/" + this->layer_xclbin_name;
-            this->lm_head_xclbin_name = this->model_path + "/" + this->lm_head_xclbin_name;
-            this->dequant_xclbin_name = this->model_path + "/" + this->dequant_xclbin_name;
-            this->mm_engine_xclbin_name = this->model_path + "/" + this->mm_engine_xclbin_name;
-            this->mha_engine_xclbin_name = this->model_path + "/" + this->mha_engine_xclbin_name;
-            this->vision_mm_engine_xclbin_name = this->model_path + "/" + this->vision_mm_engine_xclbin_name;
-            this->vision_mha_engine_xclbin_name = this->model_path + "/" + this->vision_mha_engine_xclbin_name;
             this->vision_model_weight = this->model_path + "/" + this->vision_model_weight;
         }
         std::string _str(){
@@ -181,8 +169,14 @@ public:
     /// \brief from pretrained
     /// \param model_name the model name
     void from_pretrained(std::string model_name){
+        this->exec_path = utils::get_executable_directory();
         this->model_path = model_name;
-        this->model_name = model_name;
+        #ifdef DEV_BUILD
+            this->exec_path = "C:\\Users\\alfred\\Projects\\FastFlowLM\\xclbins";
+        #else
+            this->exec_path = utils::get_executable_directory();
+        #endif
+        this->model_name = std::filesystem::path(model_name).filename().string();
         std::ifstream file(model_name + "/config.json");
         if (!file.is_open()){
             std::cerr << "Failed to open file: " << model_name << std::endl;
@@ -210,24 +204,12 @@ public:
         JSON_GET(this->addr_l_begin_mha, this->_json_config, "addr_l_begin_mha", 0, u32);
         JSON_GET(this->addr_l_end_mha, this->_json_config, "addr_l_end_mha", 0, u32);
         JSON_GET(this->addr_kk, this->_json_config, "addr_kk", 0, u32);
-        JSON_GET(this->layer_xclbin_name, this->_json_config, "layer_xclbin_name", "layer.xclbin", std::string);
-        JSON_GET(this->lm_head_xclbin_name, this->_json_config, "lm_head_xclbin_name", "lm_head.xclbin", std::string);
-        JSON_GET(this->dequant_xclbin_name, this->_json_config, "dequant_xclbin_name", "dequant.xclbin", std::string);
-        JSON_GET(this->mm_engine_xclbin_name, this->_json_config, "mm_engine_xclbin_name", "mm.xclbin", std::string);
-        JSON_GET(this->mha_engine_xclbin_name, this->_json_config, "mha_engine_xclbin_name", "attn.xclbin", std::string);
 
         this->is_vlm = false;
         this->vocab_size = (this->vocab_size + 31) / 32 * 32;
 
         JSON_GET(this->flm_version, this->_json_config, "flm_version", "0.0.0", std::string);
         
-        this->layer_xclbin_name = this->model_path + "/" + this->layer_xclbin_name;
-        this->lm_head_xclbin_name = this->model_path + "/" + this->lm_head_xclbin_name;
-        this->dequant_xclbin_name = this->model_path + "/" + this->dequant_xclbin_name;
-        this->mm_engine_xclbin_name = this->model_path + "/" + this->mm_engine_xclbin_name;
-        this->mha_engine_xclbin_name = this->model_path + "/" + this->mha_engine_xclbin_name;
-        this->vision_mm_engine_xclbin_name = this->model_path + "/" + this->vision_mm_engine_xclbin_name;
-        this->vision_mha_engine_xclbin_name = this->model_path + "/" + this->vision_mha_engine_xclbin_name;
         this->vision_model_weight = this->model_path + "/" + this->vision_model_weight;
     }
     std::string _str(){

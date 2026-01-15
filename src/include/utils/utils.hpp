@@ -331,6 +331,7 @@ inline bool check_file_exists(std::string name) {
     return file.good();
 }
 
+
 #ifdef _WIN32
 /// \brief get the user's Documents directory on Windows
 /// \return the user's Documents directory path
@@ -342,6 +343,34 @@ inline std::string get_user_documents_directory() {
     // Fallback to current directory if Documents folder cannot be found
     return ".";
 }
+
+///@brief get_executable_directory gets the directory where the executable is located
+///@return the executable directory path
+inline std::string get_executable_directory() {
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    std::string exe_path(buffer);
+    size_t last_slash = exe_path.find_last_of("/\\");
+    if (last_slash != std::string::npos) {
+        return exe_path.substr(0, last_slash);
+    }
+    return ".";
+}
 #endif
+
+template<typename... fileName>
+inline std::string path_join(fileName&&... args){
+#ifdef _WIN32
+    constexpr const char* sep = "\\";
+#else
+    constexpr const char* sep = "/";
+#endif
+    std::string path;
+    ((path += std::string(args) + sep), ...);
+    if (!path.empty()){
+        path.pop_back(); // remove the last separator
+    }
+    return path;
+}
 
 } // end of namespace utils
