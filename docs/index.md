@@ -145,7 +145,7 @@ sections:
         No drivers, no guesswork—just run the installer, pull a model, and start chatting.
       items:
         - heading: "Zero-conf installer"
-          body: "igned installers for every Ryzen™ AI 300 laptop — download, run, done."
+          body: "Signed installers for every Ryzen™ AI 300 laptop — download, run, done."
         - heading: "Drop-in APIs"
           body: "OpenAI-compatible APIs — plug in your existing tools instantly."
         - heading: "Secure by default"
