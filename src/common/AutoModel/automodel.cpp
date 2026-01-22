@@ -56,6 +56,40 @@ nlohmann::json AutoModel::_shared_setup_tokenizer(std::string model_path) {
         this->has_bos_token = true;
     }
     // load chat template
+    //check if chat_template.jinja exists
+    #ifdef _WIN32
+    std::string chat_template_path = model_path + "\\chat_template.jinja";
+    #else
+    std::string chat_template_path = model_path + "/chat_template.jinja";
+    #endif
+    if (std::filesystem::exists(chat_template_path) == false) {
+        // no jinja file exist, see if chat_template in tokenizer_config.json
+        if (tokenizer_config.find("chat_template") == tokenizer_config.end()) {
+            header_print("ERROR", "No template file found and no chat_template in tokenizer_config.json");
+            exit(1);
+        }
+    }
+    else {
+        std::ifstream fs_template(chat_template_path, std::ios::in | std::ios::binary);
+        if (fs_template.fail()) {
+            std::cerr << "Cannot open " << chat_template_path << std::endl;
+            exit(1);
+        }
+        std::string chat_template;
+        fs_template.seekg(0, std::ios::end);
+        size_t size_template = static_cast<size_t>(fs_template.tellg());
+        fs_template.seekg(0, std::ios::beg);
+        chat_template.resize(size_template);
+        fs_template.read(chat_template.data(), size_template);
+        fs_template.close();
+        // overwrite chat_template in tokenizer_config.json
+        tokenizer_config["chat_template"] = chat_template;
+    }
+    
+    if (tokenizer_config["eos_token"].is_null()) {
+        header_print("ERROR", "eos_token is null in tokenizer_config.json");
+        exit(1);
+    }
     this->chat_tmpl = std::make_unique<minja::chat_template>(
         tokenizer_config["chat_template"],
         this->has_bos_token ? tokenizer_config["bos_token"] : "",

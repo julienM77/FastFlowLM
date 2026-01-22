@@ -28,6 +28,7 @@ typedef enum {
     gemma3_text,
     gpt_oss,
     lfm2,
+    lfm2_5_tk,
     phi4,
     error_whiper,
     error_embedding
@@ -47,6 +48,7 @@ inline std::pair<std::string, std::unique_ptr<AutoModel>> get_auto_model(const s
         {"gemma3-text", SupportedModelFamily::gemma3_text},
         {"gpt-oss", SupportedModelFamily::gpt_oss},
         {"lfm2", SupportedModelFamily::lfm2},
+        {"lfm2.5-tk", SupportedModelFamily::lfm2_5_tk},
         {"phi4", SupportedModelFamily::phi4},
         {"whisper-v3", SupportedModelFamily::error_whiper},
         {"embed-gemma", SupportedModelFamily::error_embedding}
@@ -55,7 +57,7 @@ inline std::pair<std::string, std::unique_ptr<AutoModel>> get_auto_model(const s
     
     if (available_models.is_model_supported(model_tag) == false) {
         header_print("Error", "Model tag '" << model_tag << "' is not supported. Please check the model list.");
-        exit(1);
+        return std::make_pair("llama3.2:1b", std::make_unique<Llama3>(npu_device_inst));
     }
 
     std::unique_ptr<AutoModel> auto_chat_engine = nullptr;
@@ -91,6 +93,9 @@ inline std::pair<std::string, std::unique_ptr<AutoModel>> get_auto_model(const s
             break;
         case SupportedModelFamily::lfm2:
             auto_chat_engine = std::make_unique<LFM2>(npu_device_inst);
+            break;
+        case SupportedModelFamily::lfm2_5_tk:
+            auto_chat_engine = std::make_unique<LFM2_5_TK>(npu_device_inst);
             break;
         case SupportedModelFamily::phi4:
             auto_chat_engine = std::make_unique<Phi4>(npu_device_inst);

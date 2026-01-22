@@ -53,7 +53,7 @@ std::string LFM2::apply_chat_template(nlohmann::ordered_json& messages, nlohmann
     inputs.add_generation_prompt = true;
     inputs.messages = messages;
     inputs.extra_context = this->extra_context;
-    inputs.tools = tools;
+    // inputs.tools = tools;
     return this->chat_tmpl->apply(inputs, opt);
 }
 
@@ -80,7 +80,7 @@ bool LFM2::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
     
     // some models are very sensitive to this bos token, such as lfm2
     if (this->is_first_prompt == false) {
-        tokens.erase(tokens.begin()); // remove bos token in multi round conversation
+        tokens[0] = 708; // replace bos token with "\n" token in multi round conversation
     }
     this->is_first_prompt = false; // always set to false if the insert is ever called
 
@@ -290,5 +290,337 @@ StreamResult LFM2::parse_stream_content(const std::string content) {
     }
 
     result.type = StreamEventType::WAITING;
+    return result;
+}
+
+
+/***********              LFM2_5_TK family            ***********/
+LFM2_5_TK::LFM2_5_TK(xrt::device* npu_device_inst) : AutoModel(npu_device_inst, "LFM2_5_TK") {}
+
+void LFM2_5_TK::load_model(std::string model_path, json model_info, int default_context_length, bool enable_preemption) {
+    this->_shared_load_model(model_path, model_info, default_context_length, enable_preemption);
+    
+    this->q4nx = std::make_unique<Q4NX>(this->model_path);
+    // model_type == llama
+    this->lm_engine = std::make_unique<lfm2_npu>(*this->lm_config, this->npu.get(), this->MAX_L);
+
+    this->lm_engine->load_weights(*this->q4nx);
+
+    //free the q4nx
+    this->q4nx.reset();
+    this->lm_engine->clear_context();
+    this->setup_tokenizer(model_path);
+    this->sampler.reset();
+
+    sampler_config config;
+    config.rep_penalty = 1.05;
+    config.temperature = 0.1;
+    config.top_p = 0.1;
+    config.top_k = 10;
+    config.rep_penalty_window = 1024;
+    config.freq_penalty = 1.0;
+    config.freq_penalty_window = 1024;
+    this->set_sampler(config);
+    for (size_t i = 0; i < PROFILER_TYPE_NUM; i++) {
+        this->profiler_list[i].reset();
+    }
+}
+
+void LFM2_5_TK::setup_tokenizer(std::string model_path) {
+    auto tokenizer_config = this->_shared_setup_tokenizer(model_path);
+    this->tokenizer->is_doubled_encoded = true;
+}
+
+std::string LFM2_5_TK::apply_chat_template(nlohmann::ordered_json& messages, nlohmann::ordered_json tools) {
+    minja::chat_template_inputs inputs;
+    minja::chat_template_options opt;
+    opt.polyfill_tool_responses = false;
+    inputs.add_generation_prompt = true;
+    inputs.messages = messages;
+    inputs.extra_context = this->extra_context;
+    inputs.tools = tools;
+    return this->chat_tmpl->apply(inputs, opt);
+}
+
+bool LFM2_5_TK::insert(chat_meta_info_t& meta_info, lm_uniform_input_t& input) {
+    // preprocess
+    this->profiler_list[TKOEN_ENCODE_TIME].start();
+    std::string templated_text;
+    if (input.messages.empty() && input.prompt.empty()) {
+        header_print("WARNING", "No messages or prompt provided");
+        return false;
+    }
+    if (!input.messages.empty()) { // already a formated messages, usually from REST API
+        //templated_text = this->apply_chat_template(input.messages);
+        templated_text = this->apply_chat_template(input.messages, input.tools);
+    }
+    else if (!input.prompt.empty()) { // a pure text, usually from the cli
+        nlohmann::ordered_json messages;
+
+        messages.push_back({ {"role", "user"}, {"content", input.prompt} });
+        templated_text = this->apply_chat_template(messages);
+    }
+
+    std::vector<int> tokens = this->tokenizer->encode(templated_text);
+    
+    // some models are very sensitive to this bos token, such as lfm2
+    if (this->is_first_prompt == false) {
+        tokens[0] = 708; // replace bos token with "\n" token in multi round conversation
+    }
+    this->is_first_prompt = false; // always set to false if the insert is ever called
+
+    this->profiler_list[TKOEN_ENCODE_TIME].stop(tokens.size());
+    // hardware
+    if (this->total_tokens + tokens.size() >= this->MAX_L){
+        header_print("WARNING", "Max length reached, stopping prefilling...");
+        return false;
+    }
+    for (int token : tokens){
+        this->token_history.push_back(token);
+    }
+    buffer<bf16> y;
+
+    auto prefill_start_time = this->profiler_list[PREFILL_TIME].start();
+    y = this->lm_engine->prefill(tokens, nullptr);
+
+
+    auto prefill_end_time = this->profiler_list[PREFILL_TIME].stop(tokens.size());
+    meta_info.prefill_duration = (uint64_t)time_utils::duration_ns(prefill_start_time, prefill_end_time).first;
+    meta_info.prompt_tokens = tokens.size();
+    this->total_tokens += tokens.size() + 1;
+    if (this->total_tokens >= this->MAX_L){
+        header_print("WARNING", "Max length reached, stopping prefilling...");
+    }
+    this->profiler_list[SAMPLING_TIME].start();
+    this->last_token = this->sampler->sample(y);
+    this->profiler_list[SAMPLING_TIME].stop(1);
+    return true;
+}
+
+
+std::string LFM2_5_TK::generate(chat_meta_info_t& meta_info, int length_limit, std::ostream& os, std::function<bool()> is_cancelled) {
+    os << "<think>\n" << std::flush;
+    std::string result = this->_shared_generate(meta_info, length_limit, os, is_cancelled);
+    result += "<think>\n";
+    return result;
+}
+
+std::string LFM2_5_TK::generate_with_prompt(chat_meta_info_t& meta_info, lm_uniform_input_t& input, int length_limit, std::ostream& os) {
+    if (!this->insert(meta_info, input)) {
+        return "";
+    }
+    return this->generate(meta_info, length_limit, os);
+}
+
+StreamResult LFM2_5_TK::parse_stream_content(const std::string content) {
+    const std::string TOOL_START = "<|tool_call_start|>";
+    const std::string TOOL_END = "<|tool_call_end|>";
+    const std::string MARKER_THINK_START = "<think>";
+    const std::string MARKER_THINK_END = "</think>";
+
+    StreamResult result;
+    buffer_ += content;  
+
+    while (true) {
+        if (!is_in_tool_block_) {
+            size_t tool_start_pos = buffer_.find(TOOL_START);
+
+            if (tool_start_pos != std::string::npos) {
+                if (tool_start_pos > 0) {
+                    result.content = buffer_.substr(0, tool_start_pos);
+                    result.type = current_mode_;
+                    buffer_ = buffer_.substr(tool_start_pos);
+                    return result;
+                }
+
+                is_in_tool_block_ = true;
+                tool_name_.clear();
+                buffer_ = buffer_.substr(TOOL_START.length());
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+            //else {
+            //    if (!buffer_.empty()) {
+            //        result.content = buffer_;
+            //        result.type = StreamEventType::CONTENT;
+            //        buffer_.clear();
+            //        return result;
+            //    }
+            //    break;
+            //}
+        }
+
+        if (is_in_tool_block_) {
+            size_t tool_end_pos = buffer_.find(TOOL_END);
+
+            if (tool_end_pos != std::string::npos) {
+                tool_name_ += buffer_.substr(0, tool_end_pos);
+                buffer_ = buffer_.substr(tool_end_pos + TOOL_END.length());
+                is_in_tool_block_ = false;
+
+                std::string raw = tool_name_;
+
+                size_t start = raw.find_first_not_of(" \t\n\r[");
+                if (start == std::string::npos) {
+                    result.type = StreamEventType::CONTENT;
+                    result.content = "[Error: Empty tool call]";
+                    return result;
+                }
+                raw = raw.substr(start);
+
+                size_t pos_open = raw.find('(');
+                if (pos_open == std::string::npos) {
+                    result.type = StreamEventType::CONTENT;
+                    result.content = "[Error: No function bracket found]";
+                    return result;
+                }
+
+                std::string fn_name = raw.substr(0, pos_open);
+                size_t name_end = fn_name.find_last_not_of(" \t\n\r");
+                fn_name = fn_name.substr(0, name_end + 1);
+
+                int paren_count = 0;
+                size_t pos_close = pos_open;
+                for (size_t i = pos_open; i < raw.length(); ++i) {
+                    if (raw[i] == '(') paren_count++;
+                    if (raw[i] == ')') {
+                        paren_count--;
+                        if (paren_count == 0) {
+                            pos_close = i;
+                            break;
+                        }
+                    }
+                }
+
+                std::string args_part = raw.substr(pos_open + 1, pos_close - pos_open - 1);
+
+                json args_json = json::object();
+
+                size_t pos = 0;
+                while (pos < args_part.length()) {
+                    while (pos < args_part.length() &&
+                        (args_part[pos] == ' ' || args_part[pos] == ',' ||
+                            args_part[pos] == '\t' || args_part[pos] == '\n')) {
+                        pos++;
+                    }
+                    if (pos >= args_part.length()) break;
+
+                    size_t eq_pos = args_part.find('=', pos);
+                    if (eq_pos == std::string::npos) break;
+
+                    std::string key = args_part.substr(pos, eq_pos - pos);
+                    size_t key_start = key.find_first_not_of(" \t\n\r");
+                    size_t key_end = key.find_last_not_of(" \t\n\r");
+                    if (key_start != std::string::npos) {
+                        key = key.substr(key_start, key_end - key_start + 1);
+                    }
+
+                    pos = eq_pos + 1;
+                    while (pos < args_part.length() &&
+                        (args_part[pos] == ' ' || args_part[pos] == '\t')) {
+                        pos++;
+                    }
+
+                    std::string value;
+                    if (pos < args_part.length() && args_part[pos] == '"') {
+                        pos++; 
+                        size_t value_end = pos;
+                        while (value_end < args_part.length() && args_part[value_end] != '"') {
+                            if (args_part[value_end] == '\\') value_end++; 
+                            value_end++;
+                        }
+                        value = args_part.substr(pos, value_end - pos);
+                        pos = value_end + 1; 
+                        args_json[key] = value;
+                    }
+                    else {
+                        size_t value_end = pos;
+                        while (value_end < args_part.length() &&
+                            args_part[value_end] != ',' && args_part[value_end] != ')') {
+                            value_end++;
+                        }
+                        value = args_part.substr(pos, value_end - pos);
+                        size_t v_start = value.find_first_not_of(" \t\n\r");
+                        size_t v_end = value.find_last_not_of(" \t\n\r");
+                        if (v_start != std::string::npos) {
+                            value = value.substr(v_start, v_end - v_start + 1);
+                        }
+                        args_json[key] = value;
+                        pos = value_end;
+                    }
+                }
+
+                size_t next_tool_start = pos_close + 1;
+                while (next_tool_start < raw.length() &&
+                    (raw[next_tool_start] == ',' || raw[next_tool_start] == ' ' ||
+                        raw[next_tool_start] == '\t' || raw[next_tool_start] == '\n' ||
+                        raw[next_tool_start] == ']')) {
+                    next_tool_start++;
+                }
+
+                if (next_tool_start < raw.length()) {
+                    buffer_ = TOOL_START + "[" + raw.substr(next_tool_start) + "]" + TOOL_END + buffer_;
+                }
+
+                result.type = StreamEventType::TOOL_DONE;
+                result.tool_id = "call_" + std::to_string(std::time(nullptr));
+                result.tool_name = fn_name;
+                result.tool_args_str = args_json.dump();
+
+                return result;
+
+            }
+            else {
+                tool_name_ += buffer_;
+                buffer_.clear();
+                result.type = StreamEventType::WAITING;
+                return result;
+            }
+        }
+
+        // normal and reasoning
+        if (current_mode_ == StreamEventType::CONTENT) {
+            size_t think_start_pos = buffer_.find(MARKER_THINK_START);
+
+            if (think_start_pos != std::string::npos) {
+                if (think_start_pos > 0) {
+                    result.content = buffer_.substr(0, think_start_pos);
+                    result.type = StreamEventType::CONTENT;
+                    buffer_ = buffer_.substr(think_start_pos);
+                    return result;
+                }
+                buffer_ = buffer_.substr(MARKER_THINK_START.length());
+                current_mode_ = StreamEventType::REASONING;
+                continue;
+            }
+        }
+        else if (current_mode_ == StreamEventType::REASONING) {
+            size_t think_end_pos = buffer_.find(MARKER_THINK_END);
+
+            if (think_end_pos != std::string::npos) {
+                if (think_end_pos > 0) {
+                    result.content = buffer_.substr(0, think_end_pos);
+                    result.type = StreamEventType::REASONING;
+                    buffer_ = buffer_.substr(think_end_pos);
+                    return result;
+                }
+                buffer_ = buffer_.substr(MARKER_THINK_END.length());
+                current_mode_ = StreamEventType::CONTENT;
+                continue;
+            }
+        }
+
+        if (!buffer_.empty()) {
+            result.content = buffer_;
+            result.type = current_mode_;
+            buffer_.clear();
+            return result;
+        }
+
+        break;
+
+    }
+
+    result.type = current_mode_;
     return result;
 }

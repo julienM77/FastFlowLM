@@ -185,6 +185,10 @@ RestHandler::RestHandler(model_list& models, ModelDownloader& downloader, const 
     }
 
     if (default_model_tag != "model-faker") {
+        if (!supported_models.is_model_supported(default_model_tag)) {
+            header_print("Warning", "Default model tag '" << default_model_tag << "' is not supported. Falling back to 'llama3.2:1b'.");
+            this->default_model_tag = "llama3.2:1b";
+        }
         ensure_model_loaded(default_model_tag);
     }
     else {
@@ -747,12 +751,6 @@ void RestHandler::handle_openai_chat_completion(const json& request,
         json tools = request.value("tools", json::array());
         json options = request.value("options", json::object());
 
-        //for (size_t i = 0; i < current_messages.size(); ++i) {
-        //    const auto& msg = current_messages[i];
-        //    std::cout << "MSG = " << msg.dump(2) << std::endl;
-        //}
-
-
         auto load_start_time = time_utils::now();
         ensure_model_loaded(model);
         auto load_end_time = time_utils::now();
@@ -788,7 +786,7 @@ void RestHandler::handle_openai_chat_completion(const json& request,
             }
 
             if (sum_old == sum_new1) {
-                header_print("FLM", "Use cached prompt!");
+                header_print("FLM", "Use cached prompt...");
                 messages.push_back(current_messages.back());
             }
             else {
@@ -988,6 +986,11 @@ void RestHandler::handle_openai_completion(const json& request,
         std::string reasoning_effort = request.value("reasoning_effort", "medium");
         bool stream = request.value("stream", false);
         json options = request.value("options", json::object());
+
+        // direct return if model not supported
+        if (!supported_models.is_model_supported(model)) {
+            throw std::runtime_error("Model " + model + " is not supported.");
+        }
        
         int length_limit = request.value("max_tokens", 4096);
 

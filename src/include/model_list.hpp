@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include "utils/utils.hpp"
 
-#define __FLM_VERSION__ "0.9.26"
+#define __FLM_VERSION__ "0.9.28"
 
 /// \note This class is used to manage the model list.
 class model_list {
@@ -229,8 +229,7 @@ class model_list {
         }
 
         bool is_model_supported(const std::string& tag) {
-            std::string new_tag = this->rectify_model_tag(tag);
-            return all_tags.find(new_tag) != all_tags.end();
+            return all_tags.find(tag) != all_tags.end();
         }
         
     private:
