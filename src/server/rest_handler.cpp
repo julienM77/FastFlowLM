@@ -820,6 +820,7 @@ void RestHandler::handle_openai_chat_completion(const json& request,
             }
         }
         else {
+            this->auto_chat_engine->clear_context();
             nullstream nstream;
             std::string response_text = auto_chat_engine->generate_with_prompt(meta_info, uniformed_input, length_limit, nstream);
 
@@ -858,7 +859,7 @@ void RestHandler::handle_openai_chat_completion(const json& request,
                 {"service_tier", "default"}
             };
             send_response(response);
-            this->auto_chat_engine->clear_context();
+            this->prompt_cache.reset();
         }
 
     } catch (const std::exception& e) {
